@@ -1,0 +1,59 @@
+# ==========================================
+# GERAL / SISTEMA OPERACIONAL
+# ==========================================
+.DS_Store
+Thumbs.db
+.env
+.env.local
+
+# ==========================================
+# IDEs (VS Code, IntelliJ, etc)
+# ==========================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================================
+# BACK-END: JAVA & SPRING BOOT
+# ==========================================
+# Arquivos compilados
+*.class
+
+# Pastas de build do Maven/Gradle
+target/
+build/
+out/
+.gradle/
+
+# ==========================================
+# FRONT-END: REACT NATIVE & EXPO (NODE.JS)
+# ==========================================
+# Dependências do Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Pastas do Expo e builds nativos
+.expo/
+web-build/
+android/
+ios/
+
+# ==========================================
+# SERVIÇO IA: PYTHON
+# ==========================================
+# Arquivos compilados do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes Virtuais (Venv)
+venv/
+.venv/
+env/
+.env_python/
