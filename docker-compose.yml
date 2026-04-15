@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # BANCO DE DADOS POSTGRESQL
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: fluxointeligente-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: usuario_tcc
+      POSTGRES_PASSWORD: senha_segura_123
+      POSTGRES_DB: fluxointeligente_db
+      TZ: America/Sao_Paulo
+    ports:
+      # Expõe na porta 5433 do seu PC para não conflitar com seu Postgres atual
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # ==========================================
+  # N8N
+  # ==========================================
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: fluxointeligente-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  n8n_data:
