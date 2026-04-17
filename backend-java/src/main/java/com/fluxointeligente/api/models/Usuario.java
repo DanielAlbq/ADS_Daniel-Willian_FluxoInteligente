@@ -34,6 +34,11 @@ public class Usuario {
     @Column(length = 20)
     private String telefone;
 
+    @Column(length = 6)
+    private String codigoRecuperacao;
+
+    private LocalDateTime validadeCodigo;
+
     @org.hibernate.annotations.CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCadastro = LocalDateTime.now();
