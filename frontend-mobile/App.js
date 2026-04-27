@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
-const API_URL = "http://localhost:8080/usuarios";
+const API_URL = "http://192.168.3.17:8080/usuarios";
 
 function TelaLogin({ navigation }) {
   const [email, setEmail] = useState('');
@@ -21,7 +21,11 @@ function TelaLogin({ navigation }) {
       });
 
       if (response.ok) {
-        Alert.alert("Sucesso", "Você entrou no aplicativo!");
+        Alert.alert("Sucesso", "Você entrou no aplicativo!",
+          [
+            { text: 'OK', onPress: () => navigation.navigate('HomeScreen') }
+          ]
+        );
       } else {
         Alert.alert("Acesso Negado", "E-mail ou senha incorretos.");
       }
@@ -200,17 +204,17 @@ function TelaCadastro({ navigation }) {
 
 export default function App() {
   return (
-      <SafeAreaProvider>
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
-        <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
-        <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
-        <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
-        <stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: "headerShown: false"}}/>
-      </Stack.Navigator>
-    </NavigationContainer>
-      </SafeAreaProvider>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Login">
+          <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
+          <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
+          <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
+          <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
+          <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: "headerShown: false" }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

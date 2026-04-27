@@ -1,62 +1,35 @@
 package com.fluxointeligente.api.models;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "categorias")
 public class Categoria {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    // Nome da categoria (Ex: "Alimentação", "Transporte", "Vendas")
-    @Column(nullable = false)
-    private String nome;
-
-    // Uma breve descrição opcional
-    private String descricao;
-
-    // Relação: Muitas categorias pertencem a um Usuário
-    // Isso garante que o João não veja as categorias da Maria
     @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
 
-    // Construtor vazio (obrigatório para o Spring/JPA)
-    public Categoria() {
-    }
+    @Column(nullable = false, length = 100)
+    private String nome;
 
-    // Getters e Setters
-    public Long getId() {
-        return id;
-    }
+    @Column(nullable = false, length = 200)
+    private String descricao;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
-    }
-
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
-    }
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime dataCadastro = LocalDateTime.now();
 }
