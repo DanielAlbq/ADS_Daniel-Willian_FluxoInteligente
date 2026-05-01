@@ -3,6 +3,7 @@ package com.fluxointeligente.api.controllers;
 import com.fluxointeligente.api.models.Categoria;
 import com.fluxointeligente.api.repositories.CategoriaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +23,9 @@ public class CategoriaController {
     }
 
     @PostMapping
-    public Categoria criar(@RequestBody Categoria categoria) {
-        return categoriaRepository.save(categoria);
+    public ResponseEntity<Categoria> criar(@RequestBody Categoria categoria) {
+        Categoria categoriaSalva = categoriaRepository.save(categoria);
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoriaSalva);
     }
 
     @DeleteMapping("/{idCategoria}")

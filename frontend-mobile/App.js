@@ -4,9 +4,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
+import CategoriaScreen from './src/screens/CategoriaScreen';
 
 const Stack = createNativeStackNavigator();
-const API_URL = "http://192.168.3.17:8080/usuarios";
+const API_URL = "http://172.30.49.184:8080/usuarios";
 
 function TelaLogin({ navigation }) {
   const [email, setEmail] = useState('');
@@ -212,6 +213,7 @@ export default function App() {
           <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
           <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
           <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: "headerShown: false" }} />
+          <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ title: "headerShown: false" }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

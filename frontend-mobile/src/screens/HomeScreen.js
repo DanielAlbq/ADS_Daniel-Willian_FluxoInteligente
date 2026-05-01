@@ -83,7 +83,7 @@ export default function HomeScreen({ navigation }) {
                     {/* CADASTROS (UC03, UC07, UC08) */}
                     <TouchableOpacity
                         style={styles.menuItem}
-                        onPress={() => Alert.alert("Funcionalidade", "Gestão de Cadastros")}
+                        onPress={() => navigation.navigate('CategoriaScreen')}
                     >
                         <View style={[styles.iconContainer, { backgroundColor: '#fff3e0' }]}>
                             <Text style={styles.menuIcon}>📁</Text>
