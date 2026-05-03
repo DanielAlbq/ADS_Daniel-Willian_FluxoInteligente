@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; //
 
 export default function CategoriaScreen() {
     const [categorias, setCategorias] = useState([]);
@@ -7,9 +8,7 @@ export default function CategoriaScreen() {
     const [descricao, setDescricao] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const API_URL = "http://172.30.49.184:8080/api/categorias";
-    // setar o usuario para teste
-    const idUsuario = "f5faf5ca-9349-42a1-9758-fef0a8c2469e";
+    const API_URL = "http://192.168.1.19:8080/api/categorias";
 
     useEffect(() => {
         buscarCategorias();
@@ -17,7 +16,14 @@ export default function CategoriaScreen() {
 
     const buscarCategorias = async () => {
         try {
-            const response = await fetch(`${API_URL}/usuario/${idUsuario}`);
+            // Recupera o token para autorizar a busca
+            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+
+            // A rota agora é genérica, o backend filtra pelo token
+            const response = await fetch(API_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
             if (response.ok) {
                 const dados = await response.json();
                 setCategorias(dados);
@@ -28,24 +34,29 @@ export default function CategoriaScreen() {
     };
 
     const salvarCategoria = async () => {
-        if (!nome) {
-            Alert.alert("Aviso", "O nome da categoria é obrigatório.");
+
+        if (!nome || !descricao) {
+            Alert.alert("Aviso", "Nome e Descrição são obrigatórios.");
             return;
         }
 
         setLoading(true);
         try {
+            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     nome,
-                    descricao,
-                    usuario: { idUsuario: idUsuario }
+                    descricao
+
                 })
             });
 
-            if (response.ok) {
+            if (response.status === 201) {
                 Alert.alert("Sucesso", "Categoria criada!");
                 setNome('');
                 setDescricao('');
@@ -64,7 +75,6 @@ export default function CategoriaScreen() {
         <View style={styles.container}>
             <Text style={styles.title}>Minhas Categorias</Text>
 
-            {/* Formulário de Criação */}
             <View style={styles.formCard}>
                 <TextInput
                     style={styles.input}
@@ -74,7 +84,7 @@ export default function CategoriaScreen() {
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Descrição (opcional)"
+                    placeholder="Descrição (ex: Supermercado)"
                     value={descricao}
                     onChangeText={setDescricao}
                 />
@@ -89,14 +99,13 @@ export default function CategoriaScreen() {
 
             <Text style={styles.subtitle}>Categorias Cadastradas</Text>
 
-            {/* Lista de Categorias */}
             <FlatList
                 data={categorias}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <View style={styles.itemLista}>
                         <Text style={styles.itemNome}>{item.nome}</Text>
-                        {item.descricao ? <Text style={styles.itemDescricao}>{item.descricao}</Text> : null}
+                        <Text style={styles.itemDescricao}>{item.descricao}</Text>
                     </View>
                 )}
                 ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma categoria cadastrada.</Text>}

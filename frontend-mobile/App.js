@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Importação das suas telas externas
 import HomeScreen from './src/screens/HomeScreen';
 import CategoriaScreen from './src/screens/CategoriaScreen';
 
 const Stack = createNativeStackNavigator();
-const API_URL = "http://172.30.49.184:8080/usuarios";
+const API_URL = "http://192.168.1.19:8080/api/usuarios"; // IP atualizado e prefixo /api
 
+// --- TELA DE LOGIN ---
 function TelaLogin({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const fazerLogin = async () => {
+    if (!email || !senha) {
+      Alert.alert("Aviso", "Preencha todos os campos.");
+      return;
+    }
+
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -21,43 +32,95 @@ function TelaLogin({ navigation }) {
         body: JSON.stringify({ email, senha })
       });
 
-      if (response.ok) {
-        Alert.alert("Sucesso", "Você entrou no aplicativo!",
-          [
-            { text: 'OK', onPress: () => navigation.navigate('HomeScreen') }
-          ]
-        );
+      const dados = await response.json();
+
+      if (response.ok && dados.token) {
+        // SALVAMENTO CRUCIAL: Guarda o crachá para a HomeScreen usar
+        await AsyncStorage.setItem('@FluxoInteligente:token', dados.token);
+        navigation.replace('HomeScreen');
       } else {
-        Alert.alert("Acesso Negado", "E-mail ou senha incorretos.");
+        Alert.alert("Erro", "E-mail ou senha incorretos.");
       }
     } catch (error) {
-      Alert.alert("Erro", "Falha ao conectar com o servidor.");
+      Alert.alert("Erro de Conexão", "Não foi possível alcançar o servidor.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fluxo Inteligente</Text>
-      <TextInput style={styles.input} placeholder="Email" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Senha" onChangeText={setSenha} secureTextEntry />
+      <View style={styles.container}>
+        <Text style={styles.title}>Fluxo Inteligente</Text>
+        <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <TextInput style={styles.input} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
 
-      <TouchableOpacity style={styles.button} onPress={fazerLogin}>
-        <Text style={styles.buttonText}>ENTRAR</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={fazerLogin} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>ENTRAR</Text>}
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')}>
-        <Text style={styles.linkText}>Esqueci minha senha</Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')}>
+          <Text style={styles.linkText}>Esqueci minha senha</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Cadastro')} style={{ marginTop: 20 }}>
-        <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')} style={{ marginTop: 20 }}>
+          <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
+        </TouchableOpacity>
+      </View>
   );
 }
 
+// --- TELA DE CADASTRO ---
+function TelaCadastro({ navigation }) {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-// tela de esqueci senha
+  const handleCadastro = async () => {
+    if (!nome || !email || !senha || !cnpj) {
+      Alert.alert("Erro", "Preencha os campos obrigatórios!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senhaHash: senha, cnpj, telefone })
+      });
+
+      if (response.ok) {
+        Alert.alert("Sucesso", "Usuário cadastrado!", [{ text: "OK", onPress: () => navigation.navigate('Login') }]);
+      } else {
+        Alert.alert("Erro", "Falha ao cadastrar. Verifique os dados.");
+      }
+    } catch (error) {
+      Alert.alert("Erro", "Servidor offline.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Criar Conta</Text>
+        <TextInput style={styles.input} placeholder="Nome Completo" onChangeText={setNome} />
+        <TextInput style={styles.input} placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <TextInput style={styles.input} placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
+        <TextInput style={styles.input} placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
+        <TextInput style={styles.input} placeholder="Senha" onChangeText={setSenha} secureTextEntry />
+
+        <TouchableOpacity style={styles.button} onPress={handleCadastro} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>FINALIZAR CADASTRO</Text>}
+        </TouchableOpacity>
+      </View>
+  );
+}
+
+// --- TELA ESQUECI SENHA ---
 function TelaEsqueciSenha({ navigation }) {
   const [email, setEmail] = useState('');
 
@@ -71,30 +134,28 @@ function TelaEsqueciSenha({ navigation }) {
 
       if (response.ok) {
         Alert.alert("Sucesso!", "Verifique seu e-mail.");
-        // Navega para a tela de digitar o código, passando o e-mail junto!
         navigation.navigate('RedefinirSenha', { emailPassado: email });
       } else {
-        Alert.alert("Erro", "Não foi possível solicitar o código.");
+        Alert.alert("Erro", "E-mail não encontrado.");
       }
     } catch (error) {
-      Alert.alert("Erro de Conexão", "Servidor offline.");
+      Alert.alert("Erro", "Falha na conexão.");
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Recuperar Senha</Text>
-      <TextInput style={styles.input} placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TouchableOpacity style={styles.button} onPress={pedirCodigo}>
-        <Text style={styles.buttonText}>ENVIAR CÓDIGO</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.container}>
+        <Text style={styles.title}>Recuperar Senha</Text>
+        <TextInput style={styles.input} placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <TouchableOpacity style={styles.button} onPress={pedirCodigo}>
+          <Text style={styles.buttonText}>ENVIAR CÓDIGO</Text>
+        </TouchableOpacity>
+      </View>
   );
 }
 
-// tela de redefinir senha
+// --- TELA REDEFINIR SENHA ---
 function TelaRedefinirSenha({ route, navigation }) {
-  // Pega o e-mail que veio da tela anterior
   const email = route.params?.emailPassado;
   const [codigo, setCodigo] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
@@ -108,115 +169,45 @@ function TelaRedefinirSenha({ route, navigation }) {
       });
 
       if (response.ok) {
-        Alert.alert("Sucesso", "Sua senha foi alterada!");
-        navigation.navigate('Login'); // Manda de volta pro login
+        Alert.alert("Sucesso", "Senha alterada!", [{ text: "OK", onPress: () => navigation.navigate('Login') }]);
       } else {
-        const erro = await response.text();
-        Alert.alert("Erro", erro); // Vai mostrar se o código é inválido ou expirou
+        Alert.alert("Erro", "Código inválido ou expirado.");
       }
     } catch (error) {
-      Alert.alert("Erro", "Falha de conexão.");
+      Alert.alert("Erro", "Falha na conexão.");
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Criar Nova Senha</Text>
-      <Text style={{ marginBottom: 20 }}>Enviamos um código para: {email}</Text>
-
-      <TextInput style={styles.input} placeholder="Código de 6 dígitos" onChangeText={setCodigo} keyboardType="numeric" maxLength={6} />
-      <TextInput style={styles.input} placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
-
-      <TouchableOpacity style={styles.button} onPress={salvarNovaSenha}>
-        <Text style={styles.buttonText}>SALVAR NOVA SENHA</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// tela de cadastro
-function TelaCadastro({ navigation }) {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [cnpj, setCnpj] = useState('');
-  const [telefone, setTelefone] = useState('');
-
-  // ver/desver senha
-  const [verSenha, setVerSenha] = useState(true);
-
-  const handleCadastro = async () => {
-    if (!nome || !email || !senha || !cnpj) {
-      Alert.alert("Erro", "Preencha os campos obrigatórios!");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome,
-          email,
-          senhaHash: senha,
-          cnpj,
-          telefone
-        })
-      });
-
-      if (response.ok) {
-        Alert.alert("Sucesso", "Usuário cadastrado!");
-        navigation.navigate('Login'); // redirecionar para o login apos cadastrar
-      } else {
-        Alert.alert("Erro", "Falha ao cadastrar usuário.");
-      }
-    } catch (error) {
-      Alert.alert("Erro de Conexão", "Verifique se o Back-end está rodando.");
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Criar Nova Conta</Text>
-
-      <TextInput style={styles.input} placeholder="Nome Completo" onChangeText={setNome} />
-      <TextInput style={styles.input} placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
-      <TextInput style={styles.input} placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
-      <View style={styles.caixaSenha}>
-        <TextInput
-          style={styles.inputSenha}
-          placeholder="Senha"
-          onChangeText={setSenha}
-          secureTextEntry={verSenha}
-        />
-        <TouchableOpacity onPress={() => setVerSenha(!verSenha)}>
-          <Text style={{ fontSize: 20 }}>{verSenha ? "🙉" : "🙈"}</Text>
+      <View style={styles.container}>
+        <Text style={styles.title}>Nova Senha</Text>
+        <Text style={{ marginBottom: 15 }}>Enviado para: {email}</Text>
+        <TextInput style={styles.input} placeholder="Código" onChangeText={setCodigo} keyboardType="numeric" />
+        <TextInput style={styles.input} placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
+        <TouchableOpacity style={styles.button} onPress={salvarNovaSenha}>
+          <Text style={styles.buttonText}>SALVAR</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleCadastro}>
-        <Text style={styles.buttonText}>FINALIZAR CADASTRO</Text>
-      </TouchableOpacity>
-    </View>
   );
 }
 
-// rotas para as telas
-
+// --- NAVEGAÇÃO PRINCIPAL ---
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Login">
-          <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
-          <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
-          <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
-          <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
-          <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: "headerShown: false" }} />
-          <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ title: "headerShown: false" }} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="Login">
+            <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
+            <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
+            <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
+            <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
+
+            {/* Telas principais sem o cabeçalho padrão para usar o design personalizado */}
+            <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ headerShown: false }} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
   );
 }
 
@@ -226,20 +217,5 @@ const styles = StyleSheet.create({
   input: { width: '100%', height: 50, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 15, marginBottom: 15 },
   button: { width: '100%', height: 50, backgroundColor: '#2e7d32', borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
   buttonText: { color: '#fff', fontWeight: 'bold' },
-  linkText: { color: '#2e7d32', fontWeight: 'bold' },
-  caixaSenha: {
-    flexDirection: 'row',
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 15,
-    alignItems: 'center',
-    paddingHorizontal: 15,
-  },
-  inputSenha: {
-    flex: 1,
-    height: '100%',
-  }
+  linkText: { color: '#2e7d32', fontWeight: 'bold' }
 });

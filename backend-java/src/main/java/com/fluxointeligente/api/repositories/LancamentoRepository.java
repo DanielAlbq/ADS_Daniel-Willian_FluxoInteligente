@@ -15,6 +15,7 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
 
+    
     // Busca todos os lançamentos de um usuário específico
     List<Lancamento> findByUsuarioIdUsuario(UUID usuarioId);
 

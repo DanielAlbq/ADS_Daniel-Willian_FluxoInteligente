@@ -2,6 +2,7 @@ package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Usuario;
 import com.fluxointeligente.api.repositories.UsuarioRepository;
+import com.fluxointeligente.api.service.TokenService;
 
 import java.util.List;
 
@@ -12,8 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/usuarios")
+@RequestMapping("/api/usuarios")
 public class UsuarioController {
+
+    @Autowired
+    private TokenService tokenService;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -103,24 +107,33 @@ public class UsuarioController {
 
     // rota para login
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody java.util.Map<String, String> payload) {
+    // Trocamos o tipo de retorno para ResponseEntity<Map> para devolver um JSON formatado
+    public ResponseEntity<java.util.Map<String, String>> login(@RequestBody java.util.Map<String, String> payload) {
         String email = payload.get("email");
-        String senha = payload.get("senha"); // A senha pura que o usuário digitou
+        String senha = payload.get("senha");
 
         java.util.Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
 
-        // acesso negado se o email ou a senha estiverem errados
         if (usuarioOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("E-mail ou senha incorretos.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         Usuario usuario = usuarioOpt.get();
 
-        // verifica se a senha confere
         if (passwordEncoder.matches(senha, usuario.getSenhaHash())) {
-            return ResponseEntity.ok("Login realizado com sucesso!");
+
+            // A MÁGICA ACONTECE AQUI: Geramos o token com o serviço que acabamos de criar!
+            String token = tokenService.gerarToken(usuario);
+
+            // Preparamos a resposta no formato JSON
+            java.util.Map<String, String> resposta = new java.util.HashMap<>();
+            resposta.put("token", token);
+            resposta.put("mensagem", "Login realizado com sucesso!");
+
+            return ResponseEntity.ok(resposta);
+
         } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("E-mail ou senha incorretos.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Categoria;
-import com.fluxointeligente.api.repositories.CategoriaRepository;
+import com.fluxointeligente.api.service.CategoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,25 +15,23 @@ import java.util.UUID;
 public class CategoriaController {
 
     @Autowired
-    private CategoriaRepository categoriaRepository;
+    private CategoriaService categoriaService;
 
-    @GetMapping("/usuario/{idUsuario}")
-    public List<Categoria> listarPorUsuario(@PathVariable UUID idUsuario) {
-        return categoriaRepository.findByUsuarioIdUsuario(idUsuario);
+    // Listar apenas as categorias do usuário logado
+    @GetMapping
+    public ResponseEntity<List<Categoria>> listar() {
+        return ResponseEntity.ok(categoriaService.listarMinhasCategorias());
     }
 
     @PostMapping
     public ResponseEntity<Categoria> criar(@RequestBody Categoria categoria) {
-        Categoria categoriaSalva = categoriaRepository.save(categoria);
+        Categoria categoriaSalva = categoriaService.salvar(categoria);
         return ResponseEntity.status(HttpStatus.CREATED).body(categoriaSalva);
     }
 
     @DeleteMapping("/{idCategoria}")
     public ResponseEntity<Void> deletar(@PathVariable UUID idCategoria) {
-        if (categoriaRepository.existsById(idCategoria)) {
-            categoriaRepository.deleteById(idCategoria);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+        categoriaService.deletar(idCategoria);
+        return ResponseEntity.noContent().build();
     }
 }
