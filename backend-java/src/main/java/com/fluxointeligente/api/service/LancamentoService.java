@@ -11,7 +11,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,7 +28,8 @@ public class LancamentoService {
     // --- MÉTODOS DE SEGURANÇA ---
 
     /**
-     * Recupera o usuário logado com base no Token JWT processado pelo SecurityFilter.
+     * Recupera o usuário logado com base no Token JWT processado pelo
+     * SecurityFilter.
      */
     private Usuario getUsuarioLogado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -48,26 +51,28 @@ public class LancamentoService {
     }
 
     /**
-     * Resolve o erro 'Cannot resolve method': Nome alterado para coincidir com a Controller.
+     * NOVO MÉTODO: Consolida saldo, receitas e despesas direto pelo Banco de Dados.
+     * Utiliza o padrão DTO (Data Transfer Object) em formato de Map para a
+     * HomeScreen.
      */
-    public BigDecimal calcularSaldoUsuarioLogado() {
+    public Map<String, BigDecimal> obterResumoDashboard() {
         Usuario usuario = getUsuarioLogado();
+        UUID idUsuario = usuario.getIdUsuario();
 
-        // Buscamos os lançamentos do usuário
-        List<Lancamento> lancamentos = repository.findByUsuarioIdUsuario(usuario.getIdUsuario());
+        Map<String, BigDecimal> dashboard = new HashMap<>();
 
-        // Cálculo usando Java Streams (limpo e moderno)
-        BigDecimal receitas = lancamentos.stream()
-                .filter(l -> l.getTipo().equals(TipoLancamento.RECEITA))
-                .map(Lancamento::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Usando o banco de dados (Queries) para fazer a soma pesada (muito mais
+        // rápido)
+        BigDecimal saldo = repository.calcularSaldoAtual(idUsuario);
+        BigDecimal receitas = repository.somarPorUsuarioETipo(idUsuario, TipoLancamento.RECEITA);
+        BigDecimal despesas = repository.somarPorUsuarioETipo(idUsuario, TipoLancamento.DESPESA);
 
-        BigDecimal despesas = lancamentos.stream()
-                .filter(l -> l.getTipo().equals(TipoLancamento.DESPESA))
-                .map(Lancamento::getValor)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Previne valores nulos caso o usuário seja novo e ainda não tenha lançamentos
+        dashboard.put("saldo", saldo != null ? saldo : BigDecimal.ZERO);
+        dashboard.put("receitas", receitas != null ? receitas : BigDecimal.ZERO);
+        dashboard.put("despesas", despesas != null ? despesas : BigDecimal.ZERO);
 
-        return receitas.subtract(despesas);
+        return dashboard;
     }
 
     /**

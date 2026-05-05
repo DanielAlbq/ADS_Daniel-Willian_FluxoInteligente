@@ -8,7 +8,7 @@ export default function CategoriaScreen() {
     const [descricao, setDescricao] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const API_URL = "http://192.168.1.19:8080/api/categorias";
+    const API_URL = "http://172.30.134.193:8080/api/categorias";
 
     useEffect(() => {
         buscarCategorias();
@@ -71,6 +71,27 @@ export default function CategoriaScreen() {
         }
     };
 
+    const deletarCategoria = async (id) => {
+        try {
+            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 204) {
+                Alert.alert("Sucesso", "Categoria excluída!");
+                buscarCategorias();
+            } else {
+                Alert.alert("Erro", "Não foi possível excluir a categoria.");
+            }
+        } catch (error) {
+            Alert.alert("Erro", "Falha de conexão com o servidor.");
+        }
+    };
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Minhas Categorias</Text>
@@ -104,8 +125,13 @@ export default function CategoriaScreen() {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <View style={styles.itemLista}>
-                        <Text style={styles.itemNome}>{item.nome}</Text>
-                        <Text style={styles.itemDescricao}>{item.descricao}</Text>
+                        <View style={styles.itemInfo}>
+                            <Text style={styles.itemNome}>{item.nome}</Text>
+                            <Text style={styles.itemDescricao}>{item.descricao}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.deleteButton} onPress={() => deletarCategoria(item.id)}>
+                            <Text style={styles.deleteIcon}>🗑</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
                 ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma categoria cadastrada.</Text>}
@@ -122,8 +148,13 @@ const styles = StyleSheet.create({
     button: { height: 45, backgroundColor: '#2e7d32', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     buttonText: { color: '#fff', fontWeight: 'bold' },
     subtitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-    itemLista: { padding: 15, backgroundColor: '#fff', marginBottom: 10, borderRadius: 8, borderLeftWidth: 5, borderLeftColor: '#2e7d32', elevation: 1 },
+    itemLista: { padding: 15, backgroundColor: '#fff', marginBottom: 10, borderRadius: 8, borderLeftWidth: 5, borderLeftColor: '#2e7d32', elevation: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    itemInfo: { flex: 1 },
     itemNome: { fontSize: 16, fontWeight: 'bold' },
     itemDescricao: { fontSize: 14, color: '#666', marginTop: 4 },
-    emptyText: { textAlign: 'center', color: '#999', marginTop: 20 }
+    emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
+    deleteButton: { padding: 10, justifyContent: 'center', alignItems: 'center' },
+    deleteIcon: { fontSize: 24, fontWeight: 'bold', color: '#d32f2f' }
+
+
 });

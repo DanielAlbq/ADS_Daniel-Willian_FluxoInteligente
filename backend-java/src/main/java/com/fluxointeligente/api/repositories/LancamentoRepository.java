@@ -15,7 +15,6 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
 
-    
     // Busca todos os lançamentos de um usuário específico
     List<Lancamento> findByUsuarioIdUsuario(UUID usuarioId);
 
@@ -33,4 +32,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
     // filtro para lancamentos futuros
     @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.data > CURRENT_DATE")
     BigDecimal somarPrevistoPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
+
+    @Query("SELECT COALESCE(SUM(CASE WHEN l.tipo = 'RECEITA' THEN l.valor ELSE -l.valor END), 0) "
+            + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario")
+    BigDecimal calcularSaldoAtual(@Param("idUsuario") UUID idUsuario);
 }

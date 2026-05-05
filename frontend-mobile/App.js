@@ -10,7 +10,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CategoriaScreen from './src/screens/CategoriaScreen';
 
 const Stack = createNativeStackNavigator();
-const API_URL = "http://192.168.1.19:8080/api/usuarios"; // IP atualizado e prefixo /api
+const API_URL = "http://172.30.134.193:8080/api/usuarios"; // IP atualizado e prefixo /api
 
 // --- TELA DE LOGIN ---
 function TelaLogin({ navigation }) {
@@ -49,23 +49,23 @@ function TelaLogin({ navigation }) {
   };
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Fluxo Inteligente</Text>
-        <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
+    <View style={styles.container}>
+      <Text style={styles.title}>Fluxo Inteligente</Text>
+      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TextInput style={styles.input} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
 
-        <TouchableOpacity style={styles.button} onPress={fazerLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>ENTRAR</Text>}
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={fazerLogin} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>ENTRAR</Text>}
+      </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')}>
-          <Text style={styles.linkText}>Esqueci minha senha</Text>
-        </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')}>
+        <Text style={styles.linkText}>Esqueci minha senha</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Cadastro')} style={{ marginTop: 20 }}>
-          <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity onPress={() => navigation.navigate('Cadastro')} style={{ marginTop: 20 }}>
+        <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -105,18 +105,18 @@ function TelaCadastro({ navigation }) {
   };
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Criar Conta</Text>
-        <TextInput style={styles.input} placeholder="Nome Completo" onChangeText={setNome} />
-        <TextInput style={styles.input} placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
-        <TextInput style={styles.input} placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Senha" onChangeText={setSenha} secureTextEntry />
+    <View style={styles.container}>
+      <Text style={styles.title}>Criar Conta</Text>
+      <TextInput style={styles.input} placeholder="Nome Completo" onChangeText={setNome} />
+      <TextInput style={styles.input} placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TextInput style={styles.input} placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
+      <TextInput style={styles.input} placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
+      <TextInput style={styles.input} placeholder="Senha" onChangeText={setSenha} secureTextEntry />
 
-        <TouchableOpacity style={styles.button} onPress={handleCadastro} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>FINALIZAR CADASTRO</Text>}
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.button} onPress={handleCadastro} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>FINALIZAR CADASTRO</Text>}
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -144,13 +144,13 @@ function TelaEsqueciSenha({ navigation }) {
   };
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Recuperar Senha</Text>
-        <TextInput style={styles.input} placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TouchableOpacity style={styles.button} onPress={pedirCodigo}>
-          <Text style={styles.buttonText}>ENVIAR CÓDIGO</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>Recuperar Senha</Text>
+      <TextInput style={styles.input} placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TouchableOpacity style={styles.button} onPress={pedirCodigo}>
+        <Text style={styles.buttonText}>ENVIAR CÓDIGO</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -179,35 +179,35 @@ function TelaRedefinirSenha({ route, navigation }) {
   };
 
   return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Nova Senha</Text>
-        <Text style={{ marginBottom: 15 }}>Enviado para: {email}</Text>
-        <TextInput style={styles.input} placeholder="Código" onChangeText={setCodigo} keyboardType="numeric" />
-        <TextInput style={styles.input} placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
-        <TouchableOpacity style={styles.button} onPress={salvarNovaSenha}>
-          <Text style={styles.buttonText}>SALVAR</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>Nova Senha</Text>
+      <Text style={{ marginBottom: 15 }}>Enviado para: {email}</Text>
+      <TextInput style={styles.input} placeholder="Código" onChangeText={setCodigo} keyboardType="numeric" />
+      <TextInput style={styles.input} placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
+      <TouchableOpacity style={styles.button} onPress={salvarNovaSenha}>
+        <Text style={styles.buttonText}>SALVAR</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 // --- NAVEGAÇÃO PRINCIPAL ---
 export default function App() {
   return (
-      <SafeAreaProvider>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName="Login">
-            <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
-            <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
-            <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
-            <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Login">
+          <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
+          <Stack.Screen name="Cadastro" component={TelaCadastro} options={{ title: 'Criar Conta' }} />
+          <Stack.Screen name="EsqueciSenha" component={TelaEsqueciSenha} options={{ title: 'Recuperação' }} />
+          <Stack.Screen name="RedefinirSenha" component={TelaRedefinirSenha} options={{ title: 'Nova Senha' }} />
 
-            {/* Telas principais sem o cabeçalho padrão para usar o design personalizado */}
-            <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ headerShown: false }} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
+          {/* Telas principais sem o cabeçalho padrão para usar o design personalizado */}
+          <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

@@ -2,6 +2,8 @@ package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Lancamento;
 import com.fluxointeligente.api.service.LancamentoService;
+
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,13 +20,10 @@ public class LancamentoController {
     @Autowired
     private LancamentoService service;
 
-    // 1. NOVO ENDPOINT: Busca o saldo total do usuário logado
-    // Este é o endpoint que a sua HomeScreen precisa!
     @GetMapping("/saldo")
-    public ResponseEntity<BigDecimal> obterSaldoTotal() {
-        // Assume-se que seu service já tem a lógica de somar receitas e subtrair despesas
-        BigDecimal saldo = service.calcularSaldoUsuarioLogado();
-        return ResponseEntity.ok(saldo);
+    public ResponseEntity<Map<String, BigDecimal>> obterSaldoTotal() {
+        Map<String, BigDecimal> dadosDashboard = service.obterResumoDashboard();
+        return ResponseEntity.ok(dadosDashboard);
     }
 
     // Listar todos os lançamentos do usuário extraído do Token
