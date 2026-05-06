@@ -20,7 +20,7 @@ export default function HomeScreen({ navigation }) {
     const [despesas, setDespesas] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    const API_URL = "http://172.30.134.193:8080/api/lancamentos/saldo";
+    const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/lancamentos/saldo`;
 
     useFocusEffect(
         useCallback(() => {

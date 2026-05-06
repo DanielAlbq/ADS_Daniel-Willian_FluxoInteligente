@@ -8,7 +8,7 @@ export default function CategoriaScreen() {
     const [descricao, setDescricao] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const API_URL = "http://172.30.134.193:8080/api/categorias";
+    const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
 
     useEffect(() => {
         buscarCategorias();

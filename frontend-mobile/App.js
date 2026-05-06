@@ -10,7 +10,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CategoriaScreen from './src/screens/CategoriaScreen';
 
 const Stack = createNativeStackNavigator();
-const API_URL = "http://172.30.134.193:8080/api/usuarios"; // IP atualizado e prefixo /api
+const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
 
 // --- TELA DE LOGIN ---
 function TelaLogin({ navigation }) {
