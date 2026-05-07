@@ -136,7 +136,7 @@ export default function HomeScreen({ navigation }) {
 
                 <Text style={styles.sectionTitle}>Funcionalidades</Text>
                 <View style={styles.menuGrid}>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Funcionalidade", "Abrir Novo Lançamento")}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LancamentoScreen')}>
                         <View style={[styles.iconContainer, { backgroundColor: '#e8f5e9' }]}><Text style={styles.menuIcon}>📝</Text></View>
                         <Text style={styles.menuLabel}>Lançamento</Text>
                     </TouchableOpacity>

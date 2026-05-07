@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Importação das suas telas externas
 import HomeScreen from './src/screens/HomeScreen';
 import CategoriaScreen from './src/screens/CategoriaScreen';
+import LancamentoScreen from './src/screens/LancamentoScreen';
 
 const Stack = createNativeStackNavigator();
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
@@ -32,16 +33,23 @@ function TelaLogin({ navigation }) {
         body: JSON.stringify({ email, senha })
       });
 
-      const dados = await response.json();
+      if (response.ok) {
+        const dados = await response.json();
 
-      if (response.ok && dados.token) {
-        // SALVAMENTO CRUCIAL: Guarda o crachá para a HomeScreen usar
-        await AsyncStorage.setItem('@FluxoInteligente:token', dados.token);
-        navigation.replace('HomeScreen');
+        if (dados.token) {
+          await AsyncStorage.setItem('@FluxoInteligente:token', dados.token);
+          navigation.replace('HomeScreen');
+        }
+
+      } else if (response.status === 401 || response.status === 403) {
+        Alert.alert("Acesso Negado", "E-mail ou senha incorretos.");
+
       } else {
-        Alert.alert("Erro", "E-mail ou senha incorretos.");
+        Alert.alert("Erro", "Ocorreu um problema ao tentar conectar.");
       }
+
     } catch (error) {
+      console.error("Erro no Fetch:", error);
       Alert.alert("Erro de Conexão", "Não foi possível alcançar o servidor.");
     } finally {
       setLoading(false);
@@ -205,6 +213,7 @@ export default function App() {
           {/* Telas principais sem o cabeçalho padrão para usar o design personalizado */}
           <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="LancamentoScreen" component={LancamentoScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
