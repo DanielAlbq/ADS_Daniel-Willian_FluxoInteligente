@@ -21,9 +21,15 @@ public class Lancamento {
     @Column(nullable = false)
     private BigDecimal valor;
 
-    // Esta é a data de competência (quando o gasto ocorreu ou foi planejado)
-    @Column(nullable = false)
-    private LocalDate data;
+    @Column(nullable = false, updatable = false)
+    private LocalDate data; // Data de inserção
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.data == null) {
+            this.data = LocalDate.now(); // Define a data de hoje automaticamente antes de salvar
+        }
+    }
 
     @Enumerated(EnumType.STRING)
     private TipoLancamento tipo; // RECEITA ou DESPESA

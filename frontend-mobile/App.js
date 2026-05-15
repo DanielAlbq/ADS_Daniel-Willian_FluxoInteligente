@@ -9,6 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import CategoriaScreen from './src/screens/CategoriaScreen';
 import LancamentoScreen from './src/screens/LancamentoScreen';
+import ReceitaScreen from './src/screens/ReceitaScreen';
+import DespesaScreen from './src/screens/DespesaScreen';
 
 const Stack = createNativeStackNavigator();
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
@@ -214,6 +216,8 @@ export default function App() {
           <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CategoriaScreen" component={CategoriaScreen} options={{ headerShown: false }} />
           <Stack.Screen name="LancamentoScreen" component={LancamentoScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ReceitaScreen" component={ReceitaScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="DespesaScreen" component={DespesaScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
