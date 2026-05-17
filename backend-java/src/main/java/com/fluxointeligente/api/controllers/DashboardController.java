@@ -22,15 +22,16 @@ public class DashboardController {
 
     @GetMapping("/{usuarioId}/resumo")
     public ResponseEntity<DashboardResumoDTO> obterResumo(@PathVariable UUID usuarioId) {
-        // ... resto do código continua igual ...{
 
         // 1. Busca a soma das Receitas (Se for null, assume ZERO)
         BigDecimal receitas = lancamentoRepository.somarPorUsuarioETipo(usuarioId, TipoLancamento.RECEITA);
-        if (receitas == null) receitas = BigDecimal.ZERO;
+        if (receitas == null)
+            receitas = BigDecimal.ZERO;
 
         // 2. Busca a soma das Despesas (Se for null, assume ZERO)
         BigDecimal despesas = lancamentoRepository.somarPorUsuarioETipo(usuarioId, TipoLancamento.DESPESA);
-        if (despesas == null) despesas = BigDecimal.ZERO;
+        if (despesas == null)
+            despesas = BigDecimal.ZERO;
 
         // 3. Calcula o Saldo (Receitas - Despesas)
         BigDecimal saldo = receitas.subtract(despesas);

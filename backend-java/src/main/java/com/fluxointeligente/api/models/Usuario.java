@@ -58,4 +58,8 @@ public class Usuario {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<Lancamento> lancamentos;
+
+    public Object getId() {
+        throw new UnsupportedOperationException("Unimplemented method 'getId'");
+    }
 }

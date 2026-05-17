@@ -144,7 +144,7 @@ export default function HomeScreen({ navigation }) {
                         <View style={[styles.iconContainer, { backgroundColor: '#e3f2fd' }]}><Text style={styles.menuIcon}>📸</Text></View>
                         <Text style={styles.menuLabel}>Ler Nota OCR</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('CategoriaScreen')}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('CadastrosScreen')}>
                         <View style={[styles.iconContainer, { backgroundColor: '#fff3e0' }]}><Text style={styles.menuIcon}>📁</Text></View>
                         <Text style={styles.menuLabel}>Cadastros</Text>
                     </TouchableOpacity>
