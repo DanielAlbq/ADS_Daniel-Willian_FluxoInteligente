@@ -60,6 +60,6 @@ public class Usuario {
     private List<Lancamento> lancamentos;
 
     public Object getId() {
-        throw new UnsupportedOperationException("Unimplemented method 'getId'");
+        return idUsuario;
     }
 }

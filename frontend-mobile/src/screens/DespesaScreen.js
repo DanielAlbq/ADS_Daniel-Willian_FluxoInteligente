@@ -8,12 +8,15 @@ export default function DespesaScreen({ navigation }) {
     const [valor, setValor] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
+    const [fornecedorId, setFornecedorId] = useState(null);
 
     const [categorias, setCategorias] = useState([]);
+    const [fornecedores, setFornecedores] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const API_URL_LANCAMENTOS = `${process.env.EXPO_PUBLIC_API_URL}/lancamentos`;
     const API_URL_CATEGORIAS = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
+    const API_URL_FORNECEDORES = `${process.env.EXPO_PUBLIC_API_URL}/fornecedores`;
 
     useEffect(() => {
         carregarCategorias();
@@ -29,6 +32,23 @@ export default function DespesaScreen({ navigation }) {
         } catch (error) {
             console.error("Erro ao buscar categorias:", error);
             Alert.alert("Erro", "Não foi possível carregar as categorias.");
+        }
+    };
+
+    useEffect(() => {
+        carregarFornecedores();
+    }, []);
+
+    const carregarFornecedores = async () => {
+        try {
+            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+            const response = await axios.get(API_URL_FORNECEDORES, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setFornecedores(response.data);
+        } catch (error) {
+            console.error("Erro ao buscar fornecedores:", error);
+            Alert.alert("Erro", "Não foi possível carregar os fornecedores.");
         }
     };
 
@@ -49,7 +69,8 @@ export default function DespesaScreen({ navigation }) {
                 valor: parseFloat(valorFormatado),
                 tipo: tipo,
                 data: new Date().toISOString().split('T')[0],
-                categoria: { id: categoriaId }
+                categoria: { id: categoriaId },
+                fornecedor: fornecedorId ? { id: fornecedorId } : null
             };
 
             const response = await axios.post(API_URL_LANCAMENTOS, payload, {
@@ -103,6 +124,22 @@ export default function DespesaScreen({ navigation }) {
                 ))}
             </View>
 
+            <Text style={styles.label}>Selecione o Fornecedor:</Text>
+
+            <View style={styles.fornecedoresGrid}>
+                {fornecedores.map((forn) => (
+                    <TouchableOpacity
+                        key={forn.id}
+                        style={[styles.catButton, fornecedorId === forn.id && styles.catButtonAtivo]}
+                        onPress={() => setFornecedorId(forn.id)}
+                    >
+                        <Text style={[styles.catText, fornecedorId === forn.id && styles.catTextAtivo]}>
+                            {forn.nome}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
             <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>SALVAR DESPESA</Text>}
             </TouchableOpacity>
@@ -116,6 +153,7 @@ const styles = StyleSheet.create({
     input: { backgroundColor: '#fff', height: 50, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, fontSize: 16 },
     label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
     categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 30 },
+    fornecedoresGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 30 },
     catButton: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, margin: 5 },
     catButtonAtivo: { backgroundColor: '#f44336' },
     catText: { color: '#555', fontSize: 14 },

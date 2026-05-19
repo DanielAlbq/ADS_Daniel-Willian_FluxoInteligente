@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/**").permitAll() // Por precaução para as outras rotas de senha
+                        .requestMatchers("/error").permitAll() // Prevent masking exceptions with 403
 
                         // Bloqueia todo o resto
                         .anyRequest().authenticated()

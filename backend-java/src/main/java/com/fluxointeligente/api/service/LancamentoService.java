@@ -47,7 +47,15 @@ public class LancamentoService {
     public Lancamento salvar(Lancamento lancamento) {
         Usuario usuario = getUsuarioLogado();
         lancamento.setUsuario(usuario);
-        return repository.save(lancamento);
+
+        // 1. Salva no banco de dados (o objeto 'salvo' volta cheio de
+        // Proxies/Fantasmas)
+        Lancamento salvo = repository.save(lancamento);
+
+        // 2. Busca o objeto recém-salvo no banco de dados novamente.
+        // Isso obriga o banco a trazer os dados reais da Categoria e do Fornecedor,
+        // garantindo que o seu React Native receba o JSON perfeitamente.
+        return repository.findById(salvo.getId()).orElse(salvo);
     }
 
     /**

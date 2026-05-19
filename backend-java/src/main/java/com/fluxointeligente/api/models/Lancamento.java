@@ -3,6 +3,7 @@ package com.fluxointeligente.api.models;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.UUID;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -44,4 +45,8 @@ public class Lancamento {
     @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
+
+    @ManyToOne
+    @JoinColumn(name = "fornecedor_id")
+    private Fornecedor fornecedor;
 }
