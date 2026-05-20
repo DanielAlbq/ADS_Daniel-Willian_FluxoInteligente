@@ -1,6 +1,7 @@
 package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Categoria;
+import com.fluxointeligente.api.models.TipoLancamento;
 import com.fluxointeligente.api.service.CategoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,9 +18,12 @@ public class CategoriaController {
     @Autowired
     private CategoriaService categoriaService;
 
-    // Listar apenas as categorias do usuário logado
+    // Listar apenas as categorias do usuário logado, opcionalmente filtradas por tipo
     @GetMapping
-    public ResponseEntity<List<Categoria>> listar() {
+    public ResponseEntity<List<Categoria>> listar(@RequestParam(required = false) TipoLancamento tipo) {
+        if (tipo != null) {
+            return ResponseEntity.ok(categoriaService.listarMinhasCategoriasPorTipo(tipo));
+        }
         return ResponseEntity.ok(categoriaService.listarMinhasCategorias());
     }
 

@@ -1,6 +1,7 @@
 package com.fluxointeligente.api.service;
 
 import com.fluxointeligente.api.models.Categoria;
+import com.fluxointeligente.api.models.TipoLancamento;
 import com.fluxointeligente.api.models.Usuario;
 import com.fluxointeligente.api.repositories.CategoriaRepository;
 import com.fluxointeligente.api.repositories.UsuarioRepository;
@@ -38,6 +39,11 @@ public class CategoriaService {
     public List<Categoria> listarMinhasCategorias() {
         Usuario usuario = getUsuarioLogado();
         return categoriaRepository.findByUsuarioIdUsuario(usuario.getIdUsuario());
+    }
+
+    public List<Categoria> listarMinhasCategoriasPorTipo(TipoLancamento tipo) {
+        Usuario usuario = getUsuarioLogado();
+        return categoriaRepository.findByUsuarioIdUsuarioAndTipo(usuario.getIdUsuario(), tipo);
     }
 
     public void deletar(UUID idCategoria) {

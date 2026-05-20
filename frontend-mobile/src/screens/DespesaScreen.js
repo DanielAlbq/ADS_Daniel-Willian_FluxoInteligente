@@ -25,7 +25,7 @@ export default function DespesaScreen({ navigation }) {
     const carregarCategorias = async () => {
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
-            const response = await axios.get(API_URL_CATEGORIAS, {
+            const response = await axios.get(`${API_URL_CATEGORIAS}?tipo=DESPESA`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setCategorias(response.data);

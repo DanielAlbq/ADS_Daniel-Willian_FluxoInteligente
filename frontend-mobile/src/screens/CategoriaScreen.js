@@ -6,6 +6,7 @@ export default function CategoriaScreen() {
     const [categorias, setCategorias] = useState([]);
     const [nome, setNome] = useState('');
     const [descricao, setDescricao] = useState('');
+    const [tipo, setTipo] = useState('DESPESA');
     const [loading, setLoading] = useState(false);
 
     const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
@@ -51,8 +52,8 @@ export default function CategoriaScreen() {
                 },
                 body: JSON.stringify({
                     nome,
-                    descricao
-
+                    descricao,
+                    tipo
                 })
             });
 
@@ -60,6 +61,7 @@ export default function CategoriaScreen() {
                 Alert.alert("Sucesso", "Categoria criada!");
                 setNome('');
                 setDescricao('');
+                setTipo('DESPESA');
                 buscarCategorias();
             } else {
                 Alert.alert("Erro", "Não foi possível criar a categoria.");
@@ -109,6 +111,40 @@ export default function CategoriaScreen() {
                     value={descricao}
                     onChangeText={setDescricao}
                 />
+
+                <Text style={styles.label}>Tipo de Categoria:</Text>
+                <View style={styles.tipoSelector}>
+                    <TouchableOpacity
+                        style={[
+                            styles.selectorButton,
+                            tipo === 'RECEITA' ? styles.selectorReceitaAtivo : styles.selectorInativo
+                        ]}
+                        onPress={() => setTipo('RECEITA')}
+                    >
+                        <Text style={[
+                            styles.selectorButtonText,
+                            tipo === 'RECEITA' ? styles.selectorTextReceitaAtivo : styles.selectorTextInativo
+                        ]}>
+                            RECEITA
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.selectorButton,
+                            tipo === 'DESPESA' ? styles.selectorDespesaAtivo : styles.selectorInativo
+                        ]}
+                        onPress={() => setTipo('DESPESA')}
+                    >
+                        <Text style={[
+                            styles.selectorButtonText,
+                            tipo === 'DESPESA' ? styles.selectorTextDespesaAtivo : styles.selectorTextInativo
+                        ]}>
+                            DESPESA
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity style={styles.button} onPress={salvarCategoria} disabled={loading}>
                     {loading ? (
                         <ActivityIndicator color="#fff" />
@@ -124,9 +160,25 @@ export default function CategoriaScreen() {
                 data={categorias}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <View style={styles.itemLista}>
+                    <View style={[
+                        styles.itemLista,
+                        item.tipo === 'RECEITA' ? styles.itemListaReceita : styles.itemListaDespesa
+                    ]}>
                         <View style={styles.itemInfo}>
-                            <Text style={styles.itemNome}>{item.nome}</Text>
+                            <View style={styles.itemHeader}>
+                                <Text style={styles.itemNome}>{item.nome}</Text>
+                                <View style={[
+                                    styles.badge,
+                                    item.tipo === 'RECEITA' ? styles.badgeReceita : styles.badgeDespesa
+                                ]}>
+                                    <Text style={[
+                                        styles.badgeText,
+                                        item.tipo === 'RECEITA' ? styles.badgeTextReceita : styles.badgeTextDespesa
+                                    ]}>
+                                        {item.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
+                                    </Text>
+                                </View>
+                            </View>
                             <Text style={styles.itemDescricao}>{item.descricao}</Text>
                         </View>
                         <TouchableOpacity style={styles.deleteButton} onPress={() => deletarCategoria(item.id)}>
@@ -145,12 +197,31 @@ const styles = StyleSheet.create({
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#2e7d32' },
     formCard: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 20, elevation: 2 },
     input: { height: 45, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 15, marginBottom: 10 },
+    label: { fontSize: 14, fontWeight: 'bold', color: '#555', marginBottom: 8, marginTop: 5 },
+    tipoSelector: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+    selectorButton: { flex: 1, height: 40, borderRadius: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+    selectorInativo: { backgroundColor: '#f5f5f5', borderColor: '#ddd' },
+    selectorReceitaAtivo: { backgroundColor: '#e8f5e9', borderColor: '#2e7d32' },
+    selectorDespesaAtivo: { backgroundColor: '#ffebee', borderColor: '#d32f2f' },
+    selectorButtonText: { fontWeight: 'bold', fontSize: 14 },
+    selectorTextInativo: { color: '#777' },
+    selectorTextReceitaAtivo: { color: '#2e7d32' },
+    selectorTextDespesaAtivo: { color: '#d32f2f' },
     button: { height: 45, backgroundColor: '#2e7d32', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     buttonText: { color: '#fff', fontWeight: 'bold' },
     subtitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-    itemLista: { padding: 15, backgroundColor: '#fff', marginBottom: 10, borderRadius: 8, borderLeftWidth: 5, borderLeftColor: '#2e7d32', elevation: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    itemLista: { padding: 15, backgroundColor: '#fff', marginBottom: 10, borderRadius: 8, borderLeftWidth: 5, elevation: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    itemListaReceita: { borderLeftColor: '#2e7d32' },
+    itemListaDespesa: { borderLeftColor: '#d32f2f' },
     itemInfo: { flex: 1 },
+    itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     itemNome: { fontSize: 16, fontWeight: 'bold' },
+    badge: { paddingVertical: 2, paddingHorizontal: 6, borderRadius: 4 },
+    badgeReceita: { backgroundColor: '#e8f5e9' },
+    badgeDespesa: { backgroundColor: '#ffebee' },
+    badgeText: { fontSize: 11, fontWeight: 'bold' },
+    badgeTextReceita: { color: '#2e7d32' },
+    badgeTextDespesa: { color: '#d32f2f' },
     itemDescricao: { fontSize: 14, color: '#666', marginTop: 4 },
     emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
     deleteButton: { padding: 10, justifyContent: 'center', alignItems: 'center' },
