@@ -49,4 +49,8 @@ public class Lancamento {
     @ManyToOne
     @JoinColumn(name = "fornecedor_id")
     private Fornecedor fornecedor;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "arquivo_id")
+    private ArquivoComprovante arquivo;
 }
