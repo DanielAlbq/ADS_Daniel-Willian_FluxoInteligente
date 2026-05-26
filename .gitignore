@@ -57,3 +57,6 @@ venv/
 .venv/
 env/
 .env_python/
+
+# chave google cloud vision
+google-credentials.json
