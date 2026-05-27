@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class FornecedorService {
@@ -58,5 +59,12 @@ public class FornecedorService {
         } else {
             throw new RuntimeException("Acesso negado");
         }
+    }
+
+    public Optional<Fornecedor> buscarPorCnpj(String cnpj) {
+        Usuario usuarioLogado = getUsuarioAutenticado();
+
+        // Chama o repositório para buscar pelo CNPJ e pelo ID do usuário logado
+        return repository.findByCnpjAndUsuario(cnpj, usuarioLogado);
     }
 }

@@ -5,6 +5,7 @@ import com.fluxointeligente.api.models.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface FornecedorRepository extends JpaRepository<Fornecedor, Long> {
 
@@ -13,4 +14,7 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Long> {
 
     // Verifica se já existe um fornecedor com aquele CNPJ para aquele usuário
     boolean existsByCnpjAndUsuario(String cnpj, Usuario usuario);
+
+    // Retorna o fornecedor buscando pelo CNPJ e garantindo que é do usuário logado
+    Optional<Fornecedor> findByCnpjAndUsuario(String cnpj, Usuario usuario);
 }

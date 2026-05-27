@@ -2,6 +2,7 @@ package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Fornecedor;
 import com.fluxointeligente.api.service.FornecedorService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,14 @@ public class FornecedorController {
     public ResponseEntity<List<Fornecedor>> listarMeusFornecedores() {
         List<Fornecedor> fornecedores = service.listarPorUsuarioLogado();
         return ResponseEntity.ok(fornecedores);
+    }
+
+    @GetMapping("/cnpj/{cnpj}")
+    public ResponseEntity<Fornecedor> buscarPorCnpj(@PathVariable String cnpj) {
+        java.util.Optional<Fornecedor> fornecedor = service.buscarPorCnpj(cnpj);
+
+        return fornecedor.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

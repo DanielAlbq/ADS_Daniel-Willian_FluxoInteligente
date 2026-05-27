@@ -140,7 +140,7 @@ export default function HomeScreen({ navigation }) {
                         <View style={[styles.iconContainer, { backgroundColor: '#e8f5e9' }]}><Text style={styles.menuIcon}>📝</Text></View>
                         <Text style={styles.menuLabel}>Lançamento</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Funcionalidade", "Abrir Leitor de Notas (OCR)")}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LancamentoOcrScreen')}>
                         <View style={[styles.iconContainer, { backgroundColor: '#e3f2fd' }]}><Text style={styles.menuIcon}>📸</Text></View>
                         <Text style={styles.menuLabel}>Ler Nota OCR</Text>
                     </TouchableOpacity>
