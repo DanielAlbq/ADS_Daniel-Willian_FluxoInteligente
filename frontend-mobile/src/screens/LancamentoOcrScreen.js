@@ -8,6 +8,7 @@ export default function LancamentoOcrScreen({ navigation }) {
     // Estados padrão do lançamento
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
+    const [textoLido, setTextoLido] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
     const [fornecedorId, setFornecedorId] = useState(null);
@@ -81,6 +82,9 @@ export default function LancamentoOcrScreen({ navigation }) {
 
             console.log("Resposta do Backend OCR:", response.data);
 
+            if (response.data.textoLido) {
+                setTextoLido(response.data.textoLido.toString());
+            }
             // 1. Preenche o Valor Total se a IA encontrou
             if (response.data.valorTotal) {
                 setValor(response.data.valorTotal.toString());
@@ -94,6 +98,8 @@ export default function LancamentoOcrScreen({ navigation }) {
 
             // 3. Define uma descrição padrão
             setDescricao("Despesa lida via OCR");
+
+            setTextoLido(response.data.textoLido);
 
             Alert.alert("Sucesso", "Imagem processada! Revise os dados extraídos.");
 
@@ -183,6 +189,8 @@ export default function LancamentoOcrScreen({ navigation }) {
 
             <TextInput style={styles.input} placeholder="Descrição (ex: Mercado)" value={descricao} onChangeText={setDescricao} />
             <TextInput style={styles.input} placeholder="Valor (R$)" keyboardType="numeric" value={valor} onChangeText={setValor} />
+            <TextInput style={styles.input} placeholder="Texto Extraido" value={textoLido} onChangeText={setTextoLido} />
+
 
             <Text style={styles.label}>Categoria:</Text>
             <View style={styles.categoriasGrid}>
