@@ -39,7 +39,7 @@ public class ArquivoComprovante {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @Transient
+    @Column(columnDefinition = "TEXT")
     private String textoExtraido;
 
 }
