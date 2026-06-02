@@ -21,11 +21,26 @@ public class OcrController {
     public ResponseEntity<Map<String, String>> lerNotaFiscal(@RequestParam("file") MultipartFile file) {
         try {
             ArquivoComprovante arquivoSalvo = ocrService.processarESalvarArquivo(file);
+            String textoBruto = arquivoSalvo.getTextoExtraido();
+
+            Map<String, String> dadosInteligentes = ocrService.extrairDadosInteligentes(textoBruto);
 
             Map<String, String> resposta = new HashMap<>();
             resposta.put("idArquivo", arquivoSalvo.getId().toString());
+            resposta.put("textoLido", textoBruto);
 
-            resposta.put("textoLido", arquivoSalvo.getTextoExtraido());
+            if (dadosInteligentes.containsKey("cnpj")) {
+                resposta.put("cnpj", dadosInteligentes.get("cnpj"));
+            }
+            if (dadosInteligentes.containsKey("data")) {
+                resposta.put("data", dadosInteligentes.get("data"));
+            }
+            if (dadosInteligentes.containsKey("valorTotal")) {
+                resposta.put("valorTotal", dadosInteligentes.get("valorTotal"));
+            }
+            if (dadosInteligentes.containsKey("descricao")) {
+                resposta.put("descricao", dadosInteligentes.get("descricao"));
+            }
 
             return ResponseEntity.ok(resposta);
 

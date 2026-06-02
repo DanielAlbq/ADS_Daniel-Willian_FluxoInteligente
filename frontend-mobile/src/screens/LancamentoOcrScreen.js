@@ -9,6 +9,7 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
     const [textoLido, setTextoLido] = useState('');
+    const [data, setData] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
     const [fornecedorId, setFornecedorId] = useState(null);
@@ -96,8 +97,15 @@ export default function LancamentoOcrScreen({ navigation }) {
                 buscarFornecedorPorCnpjOcr(response.data.cnpj);
             }
 
-            // 3. Define uma descrição padrão
-            setDescricao("Despesa lida via OCR");
+            if (response.data.data) {
+                setData(response.data.data);
+            }
+
+            if (response.data.descricao) {
+                setDescricao(response.data.descricao);
+            } else {
+                setDescricao("Despesa lida via OCR");
+            }
 
             setTextoLido(response.data.textoLido);
 
@@ -189,6 +197,7 @@ export default function LancamentoOcrScreen({ navigation }) {
 
             <TextInput style={styles.input} placeholder="Descrição (ex: Mercado)" value={descricao} onChangeText={setDescricao} />
             <TextInput style={styles.input} placeholder="Valor (R$)" keyboardType="numeric" value={valor} onChangeText={setValor} />
+            <TextInput style={styles.input} placeholder="Data" value={data} onChangeText={setData} />
             <TextInput style={styles.input} placeholder="Texto Extraido" value={textoLido} onChangeText={setTextoLido} />
 
 
