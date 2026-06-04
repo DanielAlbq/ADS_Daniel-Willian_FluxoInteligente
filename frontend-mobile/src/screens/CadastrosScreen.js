@@ -18,7 +18,7 @@ export default function CadastrosScreen({ navigation }) {
                     style={[styles.tipoButton, styles.tipoCategoria]}
                     onPress={() => navigation.navigate('CategoriaScreen')}
                 >
-                    <Text style={styles.tipoText}>📁 Categorias de gasto</Text>
+                    <Text style={styles.tipoText}>📁 Centro de custo</Text>
                 </TouchableOpacity>
             </View>
         </View>

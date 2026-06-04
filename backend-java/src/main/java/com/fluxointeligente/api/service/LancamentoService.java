@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,5 +107,15 @@ public class LancamentoService {
         }
 
         repository.delete(lancamento);
+    }
+
+    public List<Lancamento> listarExtrato(LocalDate dataInicio, LocalDate dataFim) {
+        Usuario usuario = getUsuarioLogado();
+
+        if (dataInicio != null && dataFim != null) {
+            return repository.findByUsuarioIdUsuarioAndDataBetween(usuario.getIdUsuario(), dataInicio, dataFim);
+        }
+
+        return repository.findByUsuarioIdUsuario(usuario.getIdUsuario());
     }
 }

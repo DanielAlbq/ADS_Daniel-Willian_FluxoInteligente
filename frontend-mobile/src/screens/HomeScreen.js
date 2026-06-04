@@ -140,6 +140,10 @@ export default function HomeScreen({ navigation }) {
                         <View style={[styles.iconContainer, { backgroundColor: '#e8f5e9' }]}><Text style={styles.menuIcon}>📝</Text></View>
                         <Text style={styles.menuLabel}>Lançamento</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("ExtratoScreen")}>
+                        <View style={[styles.iconContainer, { backgroundColor: '#f5f5f5' }]}><Text style={styles.menuIcon}>🧾</Text></View>
+                        <Text style={styles.menuLabel}>Extrato</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('LancamentoOcrScreen')}>
                         <View style={[styles.iconContainer, { backgroundColor: '#e3f2fd' }]}><Text style={styles.menuIcon}>📸</Text></View>
                         <Text style={styles.menuLabel}>Ler Nota OCR</Text>
@@ -151,10 +155,6 @@ export default function HomeScreen({ navigation }) {
                     <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Funcionalidade", "Dicas do Assistente IA")}>
                         <View style={[styles.iconContainer, { backgroundColor: '#f3e5f5' }]}><Text style={styles.menuIcon}>🤖</Text></View>
                         <Text style={styles.menuLabel}>Insights IA</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Funcionalidade", "Relatórios Financeiros")}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#e0f7fa' }]}><Text style={styles.menuIcon}>📊</Text></View>
-                        <Text style={styles.menuLabel}>Relatórios</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Funcionalidade", "Definições do App")}>
                         <View style={[styles.iconContainer, { backgroundColor: '#f5f5f5' }]}><Text style={styles.menuIcon}>⚙️</Text></View>
