@@ -40,9 +40,10 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
         // Busca os lançamentos por período (mês/ano) e pelo tipo.
         @Query("SELECT l FROM Lancamento l WHERE " +
                         "(:tipo IS NULL OR l.tipo = :tipo) AND " +
-                        "MONTH(l.data) = :mes AND YEAR(l.data) = :ano")
-        List<Lancamento> findByFiltrosDashboard(
+                        "(l.data BETWEEN :dataInicio AND :dataFim) " +
+                        "ORDER BY l.data DESC")
+        List<Lancamento> findByFiltrosExtrato(
                         @Param("tipo") TipoLancamento tipo,
-                        @Param("mes") int mes,
-                        @Param("ano") int ano);
+                        @Param("dataInicio") java.time.LocalDate dataInicio,
+                        @Param("dataFim") java.time.LocalDate dataFim);
 }

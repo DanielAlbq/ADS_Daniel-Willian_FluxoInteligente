@@ -3,21 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function ExtratoScreen({ route, navigation }) {
-  // 1. Lendo parâmetros enviados pela HomeScreen
   const params = route.params || {};
 
-  // Se vieram parâmetros do Dashboard, calculamos o primeiro e último dia desse mês
   const initialDateStart =
     params.mesFiltro && params.anoFiltro
       ? new Date(params.anoFiltro, params.mesFiltro - 1, 1)
@@ -28,7 +30,6 @@ export default function ExtratoScreen({ route, navigation }) {
       ? new Date(params.anoFiltro, params.mesFiltro, 0)
       : new Date();
 
-  // 2. Inicializando estados com os parâmetros ou valores padrão
   const [tipoFiltro, setTipoFiltro] = useState(params.tipoFiltro || "TODOS");
   const [dataInicio, setDataInicio] = useState(initialDateStart);
   const [dataFim, setDataFim] = useState(initialDateEnd);
@@ -40,7 +41,6 @@ export default function ExtratoScreen({ route, navigation }) {
 
   const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/lancamentos/filtrar`;
 
-  // 3. Atualiza os filtros caso o usuário navegue no Dashboard
   useFocusEffect(
     useCallback(() => {
       if (route.params) {
@@ -57,7 +57,6 @@ export default function ExtratoScreen({ route, navigation }) {
     }, [route.params]),
   );
 
-  // 4. Dispara a busca sempre que as datas ou o tipo mudarem
   useEffect(() => {
     carregarExtrato();
   }, [dataInicio, dataFim, tipoFiltro]);
@@ -67,16 +66,20 @@ export default function ExtratoScreen({ route, navigation }) {
     try {
       const token = await AsyncStorage.getItem("@FluxoInteligente:token");
 
-      // Mês e ano extraídos da data início para mandar pro novo endpoint do backend
-      const mes = dataInicio.getMonth() + 1;
-      const ano = dataInicio.getFullYear();
+      const formatarData = (data) => {
+        const year = data.getFullYear();
+        const month = String(data.getMonth() + 1).padStart(2, "0");
+        const day = String(data.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
 
-      // Se for "TODOS", não enviamos o parâmetro 'tipo' pro backend
+      const inicioFormatado = formatarData(dataInicio);
+      const fimFormatado = formatarData(dataFim);
+
       const queryTipo = tipoFiltro === "TODOS" ? "" : `&tipo=${tipoFiltro}`;
 
-      // Usa o endpoint: /lancamentos/filtrar?mes=X&ano=Y&tipo=Z
       const response = await axios.get(
-        `${API_URL}?mes=${mes}&ano=${ano}${queryTipo}`,
+        `${API_URL}?dataInicio=${inicioFormatado}&dataFim=${fimFormatado}${queryTipo}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -103,13 +106,44 @@ export default function ExtratoScreen({ route, navigation }) {
     }).format(valor);
   };
 
+  // --- AGRUPA OS LANÇAMENTOS POR DATA ---
+  const agruparLancamentos = () => {
+    // 1. Cria um objeto agrupando as datas
+    const grupos = lancamentos.reduce((acc, lancamento) => {
+      const data = lancamento.data;
+      if (!acc[data]) {
+        acc[data] = [];
+      }
+      acc[data].push(lancamento);
+      return acc;
+    }, {});
+
+    // 2. Transforma o objeto no Array de "Sections" que o React Native exige e ordena do mais recente para o mais antigo
+    const secoes = Object.keys(grupos)
+      .sort((a, b) => new Date(b) - new Date(a))
+      .map((dataKey) => {
+        const dataExibicao = dataKey.split("-").reverse().join("/");
+        return {
+          title: dataExibicao,
+          data: grupos[dataKey],
+        };
+      });
+
+    return secoes;
+  };
+
+  // --- RENDER DO CABEÇALHO DA SEÇÃO (A DATA) ---
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeaderContainer}>
+      <Text style={styles.sectionHeaderText}>{title}</Text>
+    </View>
+  );
+
+  // --- RENDER DO ITEM (O CARTÃO DO LANÇAMENTO) ---
   const renderItem = ({ item }) => (
     <View style={styles.lancamentoCard}>
       <View style={styles.lancamentoInfo}>
         <Text style={styles.descricao}>{item.descricao}</Text>
-        <Text style={styles.data}>
-          {item.data.split("-").reverse().join("/")}
-        </Text>
       </View>
       <Text
         style={[
@@ -123,11 +157,115 @@ export default function ExtratoScreen({ route, navigation }) {
     </View>
   );
 
+  const exportarExcel = async () => {
+    if (lancamentos.length === 0) {
+      Alert.alert("Aviso", "Não há lançamentos para exportar neste período.");
+      return;
+    }
+
+    try {
+      let csvString = "Data;Descricao;Tipo;Valor\n";
+
+      lancamentos.forEach((l) => {
+        const dataFormatada = l.data.split("-").reverse().join("/");
+        const valorFormatado = new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(l.valor);
+        csvString += `${dataFormatada};${l.descricao};${l.tipo};${valorFormatado}\n`;
+      });
+
+      const fileUri =
+        FileSystem.documentDirectory + "extrato_fluxo_inteligente.csv";
+
+      await FileSystem.writeAsStringAsync(fileUri, csvString);
+
+      await Sharing.shareAsync(fileUri, {
+        dialogTitle: "Exportar Extrato Excel",
+        mimeType: "text/csv",
+        UTI: "public.comma-separated-values-text",
+      });
+    } catch (error) {
+      console.error("Erro ao exportar Excel:", error);
+      Alert.alert("Erro", "Não foi possível gerar o arquivo Excel.");
+    }
+  };
+
+  const exportarPDF = async () => {
+    if (lancamentos.length === 0) {
+      Alert.alert("Aviso", "Não há lançamentos para exportar neste período.");
+      return;
+    }
+
+    try {
+      let htmlRows = "";
+      lancamentos.forEach((l) => {
+        const dataFormatada = l.data.split("-").reverse().join("/");
+        const corValor = l.tipo === "RECEITA" ? "green" : "red";
+        const sinal = l.tipo === "RECEITA" ? "+" : "-";
+
+        htmlRows += `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${dataFormatada}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${l.descricao}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; color: ${corValor}; text-align: right;">
+              ${sinal} ${formatarMoeda(l.valor)}
+            </td>
+          </tr>
+        `;
+      });
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Helvetica, Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #1b5e20; text-align: center;">Fluxo Inteligente</h1>
+            <h2 style="text-align: center;">Extrato Financeiro</h2>
+            <p style="text-align: center; color: #666;">Período: ${dataInicio.toLocaleDateString("pt-BR")} a ${dataFim.toLocaleDateString("pt-BR")}</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+              <thead>
+                <tr style="background-color: #2e7d32; color: white;">
+                  <th style="padding: 10px; text-align: left;">Data</th>
+                  <th style="padding: 10px; text-align: left;">Descrição</th>
+                  <th style="padding: 10px; text-align: right;">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${htmlRows}
+              </tbody>
+            </table>
+            <h3 style="text-align: right; margin-top: 20px;">
+              Saldo do Período: ${formatarMoeda(calcularSaldoFiltrado())}
+            </h3>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { dialogTitle: "Exportar Extrato PDF" });
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+      Alert.alert("Erro", "Não foi possível gerar o PDF.");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.titulo}>Extrato Financeiro</Text>
+      {/* CABEÇALHO */}
+      <View style={styles.headerExtrato}>
+        <Text style={styles.tituloHeader}>Extrato</Text>
 
-      {/* Abas para trocar o filtro visualmente */}
+        <View style={styles.exportButtonsContainer}>
+          <TouchableOpacity style={styles.exportBtn} onPress={exportarPDF}>
+            <Text style={styles.exportBtnText}>📄 PDF</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.exportBtn} onPress={exportarExcel}>
+            <Text style={styles.exportBtnText}>📊 Excel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ABAS DE FILTRO VISUAL */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, tipoFiltro === "TODOS" && styles.tabActive]}
@@ -170,7 +308,7 @@ export default function ExtratoScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Seção de Filtros de Data*/}
+      {/* FILTROS DE DATA */}
       <View style={styles.filtroContainer}>
         <TouchableOpacity
           onPress={() => setShowPickerInicio(true)}
@@ -180,7 +318,6 @@ export default function ExtratoScreen({ route, navigation }) {
             De: {dataInicio.toLocaleDateString("pt-BR")}
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           onPress={() => setShowPickerFim(true)}
           style={styles.dateBtn}
@@ -201,7 +338,6 @@ export default function ExtratoScreen({ route, navigation }) {
           }}
         />
       )}
-
       {showPickerFim && (
         <DateTimePicker
           value={dataFim}
@@ -213,7 +349,7 @@ export default function ExtratoScreen({ route, navigation }) {
         />
       )}
 
-      {/* Seção: Saldo no Topo */}
+      {/* SALDO DO PERÍODO */}
       <View style={styles.saldoContainer}>
         <Text style={styles.saldoLabel}>Saldo do Período</Text>
         <Text
@@ -226,7 +362,7 @@ export default function ExtratoScreen({ route, navigation }) {
         </Text>
       </View>
 
-      {/* Lista de Transações */}
+      {/* LISTA DE TRANSAÇÕES */}
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -234,13 +370,15 @@ export default function ExtratoScreen({ route, navigation }) {
           style={{ marginTop: 50 }}
         />
       ) : (
-        <FlatList
-          data={lancamentos}
-          keyExtractor={(item) =>
-            item.id ? item.id.toString() : Math.random().toString()
+        <SectionList
+          sections={agruparLancamentos()}
+          keyExtractor={(item, index) =>
+            item.id ? item.id.toString() : index.toString()
           }
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           contentContainerStyle={{ paddingBottom: 20 }}
+          stickySectionHeadersEnabled={false}
           ListEmptyComponent={
             <Text style={styles.emptyText}>Nenhum lançamento no período.</Text>
           }
@@ -256,13 +394,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     padding: 20,
   },
-  titulo: {
+  tituloHeader: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#1b5e20",
+  },
+  headerExtrato: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
-  // ESTILOS PARA AS ABAS DE FILTRO
+  exportButtonsContainer: {
+    flexDirection: "row",
+  },
+  exportBtn: {
+    backgroundColor: "#e0e0e0",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginLeft: 10,
+    elevation: 2,
+  },
+  exportBtnText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+  },
   tabsContainer: {
     flexDirection: "row",
     backgroundColor: "#e0e0e0",
@@ -328,13 +486,30 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "bold",
   },
+  //  ESTILOS DO CABEÇALHO DA SEÇÃO (DATA)
+  sectionHeaderContainer: {
+    backgroundColor: "#e8f5e9", // Fundo verde bem claro para combinar com a app
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginTop: 15,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#2e7d32",
+  },
+  // ESTILOS DO CARTÃO
   lancamentoCard: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#fff",
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 8,
     elevation: 1,
   },
   lancamentoInfo: {
@@ -344,11 +519,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-  },
-  data: {
-    fontSize: 12,
-    color: "#888",
-    marginTop: 4,
   },
   valor: {
     fontSize: 16,

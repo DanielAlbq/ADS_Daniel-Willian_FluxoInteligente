@@ -56,9 +56,9 @@ public class LancamentoController {
     @GetMapping("/filtrar")
     public ResponseEntity<List<Lancamento>> listarComFiltros(
             @RequestParam(required = false) TipoLancamento tipo,
-            @RequestParam int mes,
-            @RequestParam int ano) {
-        List<Lancamento> lancamentos = service.buscarPorFiltros(tipo, mes, ano);
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dataInicio,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dataFim) {
+        List<Lancamento> lancamentos = service.buscarPorFiltros(tipo, dataInicio, dataFim);
         return ResponseEntity.ok(lancamentos);
     }
 
