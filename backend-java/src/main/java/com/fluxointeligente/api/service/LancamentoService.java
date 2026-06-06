@@ -118,4 +118,9 @@ public class LancamentoService {
 
         return repository.findByUsuarioIdUsuario(usuario.getIdUsuario());
     }
+
+    public List<Lancamento> buscarPorFiltros(TipoLancamento tipo, int mes, int ano) {
+        return repository.findByFiltrosDashboard(tipo, mes, ano);
+    }
+
 }

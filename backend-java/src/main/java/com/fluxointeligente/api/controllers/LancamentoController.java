@@ -1,6 +1,7 @@
 package com.fluxointeligente.api.controllers;
 
 import com.fluxointeligente.api.models.Lancamento;
+import com.fluxointeligente.api.models.TipoLancamento;
 import com.fluxointeligente.api.service.LancamentoService;
 
 import java.util.Map;
@@ -49,6 +50,15 @@ public class LancamentoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
 
         List<Lancamento> lancamentos = service.listarExtrato(dataInicio, dataFim);
+        return ResponseEntity.ok(lancamentos);
+    }
+
+    @GetMapping("/filtrar")
+    public ResponseEntity<List<Lancamento>> listarComFiltros(
+            @RequestParam(required = false) TipoLancamento tipo,
+            @RequestParam int mes,
+            @RequestParam int ano) {
+        List<Lancamento> lancamentos = service.buscarPorFiltros(tipo, mes, ano);
         return ResponseEntity.ok(lancamentos);
     }
 

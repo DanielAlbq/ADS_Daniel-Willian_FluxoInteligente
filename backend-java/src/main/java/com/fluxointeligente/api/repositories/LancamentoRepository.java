@@ -15,25 +15,34 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
 
-    // Busca todos os lançamentos de um usuário específico
-    List<Lancamento> findByUsuarioIdUsuario(UUID usuarioId);
+        // Busca todos os lançamentos de um usuário específico
+        List<Lancamento> findByUsuarioIdUsuario(UUID usuarioId);
 
-    // Busca lançamentos por tipo (RECEITA/DESPESA) de um usuário
-    // Útil para calcular o total de entradas vs saídas separadamente
-    List<Lancamento> findByUsuarioIdUsuarioAndTipo(UUID usuarioId, String tipo);
+        // Busca lançamentos por tipo (RECEITA/DESPESA) de um usuário
+        // Útil para calcular o total de entradas vs saídas separadamente
+        List<Lancamento> findByUsuarioIdUsuarioAndTipo(UUID usuarioId, String tipo);
 
-    // Busca lançamentos de um usuário em um determinado intervalo de datas
-    List<Lancamento> findByUsuarioIdUsuarioAndDataBetween(UUID usuarioId, java.time.LocalDate inicio,
-            java.time.LocalDate fim);
+        // Busca lançamentos de um usuário em um determinado intervalo de datas
+        List<Lancamento> findByUsuarioIdUsuarioAndDataBetween(UUID usuarioId, java.time.LocalDate inicio,
+                        java.time.LocalDate fim);
 
-    @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo")
-    BigDecimal somarPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
+        @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo")
+        BigDecimal somarPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
 
-    // filtro para lancamentos futuros
-    @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.data > CURRENT_DATE")
-    BigDecimal somarPrevistoPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
+        // filtro para lancamentos futuros
+        @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.data > CURRENT_DATE")
+        BigDecimal somarPrevistoPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
 
-    @Query("SELECT COALESCE(SUM(CASE WHEN l.tipo = 'RECEITA' THEN l.valor ELSE -l.valor END), 0) "
-            + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario")
-    BigDecimal calcularSaldoAtual(@Param("idUsuario") UUID idUsuario);
+        @Query("SELECT COALESCE(SUM(CASE WHEN l.tipo = 'RECEITA' THEN l.valor ELSE -l.valor END), 0) "
+                        + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario")
+        BigDecimal calcularSaldoAtual(@Param("idUsuario") UUID idUsuario);
+
+        // Busca os lançamentos por período (mês/ano) e pelo tipo.
+        @Query("SELECT l FROM Lancamento l WHERE " +
+                        "(:tipo IS NULL OR l.tipo = :tipo) AND " +
+                        "MONTH(l.data) = :mes AND YEAR(l.data) = :ano")
+        List<Lancamento> findByFiltrosDashboard(
+                        @Param("tipo") TipoLancamento tipo,
+                        @Param("mes") int mes,
+                        @Param("ano") int ano);
 }
