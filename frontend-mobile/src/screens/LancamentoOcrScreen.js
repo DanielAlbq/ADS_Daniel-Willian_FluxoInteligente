@@ -3,13 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker'; // <-- NOVO IMPORT DE PDF
 
 export default function LancamentoOcrScreen({ navigation }) {
     // Estados padrão do lançamento
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
-    const [textoLido, setTextoLido] = useState('');
     const [data, setData] = useState('');
+    const [textoLido, setTextoLido] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
     const [fornecedorId, setFornecedorId] = useState(null);
@@ -17,8 +18,9 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
     const [categorias, setCategorias] = useState([]);
 
-    // Estados do OCR e carregamento
+    // Estados do OCR
     const [imageUri, setImageUri] = useState(null);
+    const [isPdf, setIsPdf] = useState(false); // Pra saber se mostramos a imagem ou o ícone do PDF
     const [loadingOcr, setLoadingOcr] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
 
@@ -41,7 +43,26 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
-    // Função para escolher ou tirar foto do comprovante
+    // 1. FUNÇÃO DA CÂMERA
+    const tirarFoto = async () => {
+        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+        if (permissionResult.granted === false) {
+            Alert.alert("Permissão negada", "É necessário permitir o acesso à câmera para tirar fotos.");
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setImageUri(result.assets[0].uri);
+            setIsPdf(false);
+            processarOcr(result.assets[0].uri, 'image/jpeg', 'camera.jpg');
+        }
+    };
+
+    // 2. FUNÇÃO DA GALERIA
     const selecionarImagem = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.granted === false) {
@@ -57,12 +78,32 @@ export default function LancamentoOcrScreen({ navigation }) {
 
         if (!result.canceled) {
             setImageUri(result.assets[0].uri);
-            processarOcr(result.assets[0].uri);
+            setIsPdf(false);
+            processarOcr(result.assets[0].uri, 'image/jpeg', 'galeria.jpg');
         }
     };
 
-    // Função que envia a imagem para o backend e processa o retorno
-    const processarOcr = async (uri) => {
+    // 3. FUNÇÃO DO PDF
+    const selecionarPdf = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: 'application/pdf',
+                copyToCacheDirectory: true,
+            });
+
+            if (!result.canceled) {
+                const doc = result.assets[0];
+                setImageUri(doc.uri);
+                setIsPdf(true);
+                processarOcr(doc.uri, 'application/pdf', doc.name);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    // Função unificada que recebe o arquivo e o tipo correto!
+    const processarOcr = async (uri, mimeType, fileName) => {
         setLoadingOcr(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
@@ -70,8 +111,8 @@ export default function LancamentoOcrScreen({ navigation }) {
             const formData = new FormData();
             formData.append('file', {
                 uri: uri,
-                name: 'comprovante.jpg',
-                type: 'image/jpeg',
+                name: fileName,
+                type: mimeType,
             });
 
             const response = await axios.post(`${API_URL}/ocr/ler-nota`, formData, {
@@ -81,45 +122,29 @@ export default function LancamentoOcrScreen({ navigation }) {
                 },
             });
 
-            console.log("Resposta do Backend OCR:", response.data);
+            if (response.data.valorTotal) setValor(response.data.valorTotal.toString());
+            if (response.data.data) setData(response.data.data);
+            if (response.data.descricao) setDescricao(response.data.descricao);
 
-            if (response.data.textoLido) {
-                setTextoLido(response.data.textoLido.toString());
-            }
-            // 1. Preenche o Valor Total se a IA encontrou
-            if (response.data.valorTotal) {
-                setValor(response.data.valorTotal.toString());
-            }
-
-            // 2. Preenche o CNPJ e já busca o Fornecedor no banco
             if (response.data.cnpj) {
                 setCnpjBusca(response.data.cnpj);
                 buscarFornecedorPorCnpjOcr(response.data.cnpj);
             }
 
-            if (response.data.data) {
-                setData(response.data.data);
+            if (response.data.textoLido) {
+                setTextoLido(response.data.textoLido);
             }
 
-            if (response.data.descricao) {
-                setDescricao(response.data.descricao);
-            } else {
-                setDescricao("Despesa lida via OCR");
-            }
-
-            setTextoLido(response.data.textoLido);
-
-            Alert.alert("Sucesso", "Imagem processada! Revise os dados extraídos.");
+            Alert.alert("Sucesso", "Documento processado! Revise os dados extraídos.");
 
         } catch (error) {
             console.error("Erro no OCR:", error);
-            Alert.alert("Erro OCR", "Não foi possível ler os dados da imagem.");
+            Alert.alert("Erro OCR", "Não foi possível ler os dados do documento.");
         } finally {
             setLoadingOcr(false);
         }
     };
 
-    // Lógica de busca de fornecedor pelo CNPJ
     const buscarFornecedorPorCnpjOcr = async (cnpj) => {
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
@@ -129,13 +154,11 @@ export default function LancamentoOcrScreen({ navigation }) {
             setFornecedorId(response.data.id);
             setNomeFornecedorLocalizado(response.data.nome);
         } catch (error) {
-            // Se der 404, apenas deixa o usuário cadastrar depois
             setFornecedorId(null);
             setNomeFornecedorLocalizado('');
         }
     };
 
-    // Função para persistir o lançamento no banco de dados
     const salvarLancamento = async () => {
         if (!descricao || !valor || !categoriaId) {
             Alert.alert("Aviso", "Preencha a descrição, valor e escolha uma categoria.");
@@ -143,6 +166,17 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
 
         const valorFormatado = valor.replace(',', '.');
+
+        let dataParaEnvio = new Date().toISOString().split('T')[0];
+
+        if (data) {
+            if (data.includes('/')) {
+                const [dia, mes, ano] = data.split('/');
+                dataParaEnvio = `${ano}-${mes}-${dia}`;
+            } else {
+                dataParaEnvio = data;
+            }
+        }
 
         setLoadingSalvar(true);
         try {
@@ -152,7 +186,7 @@ export default function LancamentoOcrScreen({ navigation }) {
                 descricao: descricao,
                 valor: parseFloat(valorFormatado),
                 tipo: tipo,
-                data: new Date().toISOString().split('T')[0],
+                data: dataParaEnvio,
                 categoria: { id: categoriaId },
                 fornecedor: fornecedorId ? { id: fornecedorId } : null
             };
@@ -175,31 +209,40 @@ export default function LancamentoOcrScreen({ navigation }) {
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.title}>Lançamento Inteligente (OCR)</Text>
+            <Text style={styles.title}>Lançamento Inteligente</Text>
 
-            {/* Área de Captura de Imagem */}
-            <TouchableOpacity style={styles.imageButton} onPress={selecionarImagem} disabled={loadingOcr}>
-                {loadingOcr ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.imageButtonText}>📸 Escanear Cupom Fiscal</Text>
-                )}
-            </TouchableOpacity>
+            {/* BARRA DE AÇÕES (CÂMERA, GALERIA, PDF) */}
+            <Text style={styles.label}>Escolha o Comprovante:</Text>
+            <View style={styles.actionRow}>
+                <TouchableOpacity style={styles.actionButton} onPress={tirarFoto} disabled={loadingOcr}>
+                    <Text style={styles.actionButtonText}>📷 Câmera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={selecionarImagem} disabled={loadingOcr}>
+                    <Text style={styles.actionButtonText}>🖼️ Galeria</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={selecionarPdf} disabled={loadingOcr}>
+                    <Text style={styles.actionButtonText}>📄 PDF</Text>
+                </TouchableOpacity>
+            </View>
 
-            {imageUri && (
+            {loadingOcr && <ActivityIndicator color="#1976d2" size="large" style={{ marginVertical: 20 }} />}
+
+            {/* PREVIEW CONDICIONAL (IMAGEM vs PDF) */}
+            {imageUri && !isPdf && !loadingOcr && (
                 <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            )}
+            {isPdf && !loadingOcr && (
+                <View style={styles.pdfPreview}>
+                    <Text style={styles.pdfPreviewText}>📄 Documento PDF Selecionado</Text>
+                </View>
             )}
 
             <View style={styles.divider} />
 
-            {/* O formulário abaixo é preenchido automaticamente pelo OCR, mas o usuário pode editar */}
             <Text style={styles.label}>Revise os Dados:</Text>
-
             <TextInput style={styles.input} placeholder="Descrição (ex: Mercado)" value={descricao} onChangeText={setDescricao} />
             <TextInput style={styles.input} placeholder="Valor (R$)" keyboardType="numeric" value={valor} onChangeText={setValor} />
-            <TextInput style={styles.input} placeholder="Data" value={data} onChangeText={setData} />
-            <TextInput style={styles.input} placeholder="Texto Extraido" value={textoLido} onChangeText={setTextoLido} />
-
+            <TextInput style={styles.input} placeholder="Data (DD/MM/AAAA)" value={data} onChangeText={setData} />
 
             <Text style={styles.label}>Categoria:</Text>
             <View style={styles.categoriasGrid}>
@@ -221,6 +264,9 @@ export default function LancamentoOcrScreen({ navigation }) {
                 <Text style={styles.successText}>✓ {nomeFornecedorLocalizado}</Text>
             ) : null}
 
+            <Text style={styles.label}>Texto Bruto Lido (Auditoria):</Text>
+            <TextInput style={[styles.input, { height: 100 }]} value={textoLido} multiline={true} editable={false} />
+
             <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loadingSalvar}>
                 {loadingSalvar ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>}
             </TouchableOpacity>
@@ -231,12 +277,18 @@ export default function LancamentoOcrScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: '#f8f9fa' },
     title: { fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 15 },
-    imageButton: { backgroundColor: '#1976d2', height: 60, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-    imageButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
+
+    actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+    actionButton: { flex: 1, backgroundColor: '#1976d2', height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginHorizontal: 5 },
+    actionButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+
     previewImage: { width: '100%', height: 150, borderRadius: 8, marginBottom: 15, resizeMode: 'cover' },
+    pdfPreview: { width: '100%', height: 80, backgroundColor: '#e0e0e0', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed' },
+    pdfPreviewText: { color: '#555', fontWeight: 'bold' },
+
     divider: { height: 1, backgroundColor: '#ddd', marginVertical: 15 },
     input: { backgroundColor: '#fff', height: 50, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 15, marginBottom: 15 },
-    label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
     categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
     catButton: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, margin: 5 },
     catButtonAtivo: { backgroundColor: '#f44336' },
