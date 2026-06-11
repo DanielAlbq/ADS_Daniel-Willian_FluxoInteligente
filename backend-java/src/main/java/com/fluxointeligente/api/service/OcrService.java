@@ -107,17 +107,14 @@ public class OcrService {
             textoExtraido = "Nenhum texto encontrado no documento.";
         }
 
-        // Salvar Base64 no Banco de Dados
         ArquivoComprovante comprovante = new ArquivoComprovante();
         comprovante.setNomeArquivo(arquivo.getOriginalFilename());
         comprovante.setTipoArquivo(mimeType);
-        // Converte os bytes originais para Base64
         comprovante.setBase64(Base64.getEncoder().encodeToString(arquivo.getBytes()));
         comprovante.setUsuario(getUsuarioLogado());
+        comprovante.setTextoExtraido(textoExtraido);
 
         ArquivoComprovante arquivoSalvo = arquivoRepository.save(comprovante);
-
-        arquivoSalvo.setTextoExtraido(textoExtraido);
 
         return arquivoSalvo;
     }
@@ -129,60 +126,93 @@ public class OcrService {
             return dadosExtraidos;
         }
 
-        // 1. Padrão CNPJ (Funciona perfeitamente)
-        Matcher mCnpj = Pattern.compile("\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}").matcher(textoBruto);
+        // 1. Padrão CNPJ (Adicionado âncora 'CNPJ' para forçar a captura em notas de
+        // posto)
+        Matcher mCnpj = Pattern
+                .compile("(?i)(?:CNPJ[:\\s]*)?(\\d{2}[\\.\\,]?\\s*\\d{3}[\\.\\,]?\\s*\\d{3}/\\d{4}-\\d{2})")
+                .matcher(textoBruto);
         if (mCnpj.find()) {
-            dadosExtraidos.put("cnpj", mCnpj.group());
+            String cnpjLimpo = mCnpj.group(1).replaceAll("[\\,\\s]", "").replaceFirst("(\\d{2})(\\d{3})", "$1.$2");
+            dadosExtraidos.put("cnpj", cnpjLimpo);
         }
 
-        // 2. Padrão Data: Pega a primeira data válida no formato DD/MM/YYYY
-        Matcher mData = Pattern.compile("\\d{2}/\\d{2}/\\d{4}").matcher(textoBruto);
+        Matcher mData = Pattern.compile("(?i)(?:Emiss[aã]o[:\\s]*)?(\\d{2}/\\d{2}/(\\d{4}|\\d{2}))")
+                .matcher(textoBruto);
         if (mData.find()) {
-            dadosExtraidos.put("data", mData.group());
+            String dataEncontrada = mData.group(1);
+            if (dataEncontrada.length() == 8) {
+                String[] partes = dataEncontrada.split("/");
+                dataEncontrada = partes[0] + "/" + partes[1] + "/20" + partes[2];
+            }
+            dadosExtraidos.put("data", dataEncontrada);
         }
 
-        // 3. Padrão Valor Total da DANFE: Procura "VALOR TOTAL DA NOTA" e pega o
-        // próximo número com vírgula
-        // O (?i) ignora maiúsculas/minúsculas. O [\\s\\S]*? permite pular quebras de
-        // linha até achar o valor.
-        Matcher mValor = Pattern.compile(
-                "(?i)(?:VALOR TOTAL DA NOTA|VALOR TOTAL(?: R\\$)?|VALOR PAGO)[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0,00)\\d{1,3}(?:\\.\\d{3})*,\\d{2})")
+        Matcher mValorPagoPosto = Pattern
+                .compile("(?i)VALOR PAGO(?:\\s*\\(R\\$\\))?[\\s\\r\\n]+((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
                 .matcher(textoBruto);
-        if (mValor.find()) {
-            dadosExtraidos.put("valorTotal", mValor.group(1));
+        Matcher mValorTotalRs = Pattern
+                .compile("(?i)Valor Total R\\$[\\s\\r\\n]+((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
+                .matcher(textoBruto);
+        Matcher mValorPago = Pattern.compile("(?i)VALOR PAGO[\\s\\r\\n]+(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
+                .matcher(textoBruto);
+        Matcher mValorAPagar = Pattern.compile("(?i)Valor a Pagar[\\s\\S]{0,30}?(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
+                .matcher(textoBruto);
+        Matcher mValorDanfe = Pattern.compile(
+                "(?i)VALOR TOTAL DA NOTA[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
+                .matcher(textoBruto);
+
+        if (mValorPagoPosto.find()) {
+            dadosExtraidos.put("valorTotal", mValorPagoPosto.group(1).replace(".", ","));
+        } else if (mValorTotalRs.find()) {
+            dadosExtraidos.put("valorTotal", mValorTotalRs.group(1).replace(".", ","));
+        } else if (mValorPago.find()) {
+            dadosExtraidos.put("valorTotal", mValorPago.group(1).replace(".", ","));
+        } else if (mValorAPagar.find()) {
+            dadosExtraidos.put("valorTotal", mValorAPagar.group(1).replace(".", ","));
+        } else if (mValorDanfe.find()) {
+            dadosExtraidos.put("valorTotal", mValorDanfe.group(1).replace(".", ","));
         }
-
-        // 4. Padrão Descrição (Nome do Estabelecimento - Estratégia em Cascata)
-
-        // Tentativa A: Canhoto da DANFE
-        Matcher mNomeDanfe = Pattern.compile("(?i)RECEBEMOS DE\\s+([A-Za-z0-9\\s\\.\\-\\&]+?)\\s+OS PRODUTOS")
-                .matcher(textoBruto);
-
-        // Tentativa B: Cupom Fiscal (NFC-e). Pega tudo que estiver antes da primeira
-        // aparição da palavra "CNPJ"
-        Matcher mNomeNfce = Pattern.compile("(?i)(?:NFC-e|Extrato)?\\s*(.+?)\\s+CNPJ").matcher(textoBruto);
-
-        // Tentativa C: DANFE sem canhoto
-        Matcher mNomeAlternativo = Pattern.compile("(?i)NOME\\s*/\\s*RAZ[AÃ]O SOCIAL[\\r\\n]+([^\\r\\n0-9]+)")
-                .matcher(textoBruto);
 
         String nomeEncontrado = null;
 
+        Matcher mNomeDanfe = Pattern.compile("(?i)RECEBEMOS DE\\s+([A-Za-zÀ-ÿ0-9\\s\\.\\-\\&]+?)\\s+OS PRODUTOS")
+                .matcher(textoBruto);
+        Matcher mNomeAbaixoCnpj = Pattern.compile(
+                "(?i)CNPJ[^\\r\\n]*?\\d{2}[\\.\\,]?\\d{3}[\\.\\,]?\\d{3}/\\d{4}-\\d{2}[\\r\\n]+([A-Za-zÀ-ÿ][^\\r\\n]{4,50})")
+                .matcher(textoBruto);
+        Matcher mNomeAntesCnpj = Pattern.compile("(?i)([A-Za-zÀ-ÿ][^\\r\\n]{4,50})[\\r\\n]+[^\\r\\n]*?CNPJ")
+                .matcher(textoBruto);
+
+        Matcher mNomePosto = Pattern.compile("(?i)(?:Linx[\\r\\n]+)?([^\\r\\n]*(?:POSTOS?|LTDA)[^\\r\\n]*)")
+                .matcher(textoBruto);
+
         if (mNomeDanfe.find()) {
             nomeEncontrado = mNomeDanfe.group(1);
-        } else if (mNomeNfce.find()) {
-            // Remove lixos como "NFC-e " do começo do nome que capturamos
-            nomeEncontrado = mNomeNfce.group(1).replaceAll("(?i)^NFC-e\\s*", "");
-        } else if (mNomeAlternativo.find()) {
-            nomeEncontrado = mNomeAlternativo.group(1);
+        } else if (mNomePosto.find()) {
+            nomeEncontrado = mNomePosto.group(1);
+        } else if (mNomeAbaixoCnpj.find()) {
+            nomeEncontrado = mNomeAbaixoCnpj.group(1);
+        } else if (mNomeAntesCnpj.find()) {
+            nomeEncontrado = mNomeAntesCnpj.group(1);
         }
 
         if (nomeEncontrado != null) {
-            nomeEncontrado = nomeEncontrado.trim();
+            nomeEncontrado = nomeEncontrado
+                    .replaceAll("(?i)(N[AÃ]O [EÉ] DOCUMENTO FISCAL|LINX|EXTRATO|DOCUMENTO AUXILIAR|SISTEMA)", "")
+                    .trim();
+
+            nomeEncontrado = nomeEncontrado.replaceAll("(?i)(AVENIDA|AV\\.|RUA|ENDERE[CÇ]O|FONE|DOCUMENTO).*$", "")
+                    .trim();
+
+            nomeEncontrado = nomeEncontrado.replaceFirst("^[^A-Za-zÀ-ÿ]+", "").trim();
+
             if (nomeEncontrado.length() > 50) {
                 nomeEncontrado = nomeEncontrado.substring(0, 50);
             }
-            dadosExtraidos.put("descricao", nomeEncontrado);
+
+            if (nomeEncontrado.length() >= 4) {
+                dadosExtraidos.put("descricao", nomeEncontrado);
+            }
         }
 
         return dadosExtraidos;
