@@ -211,9 +211,7 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() =>
-              Alert.alert("Funcionalidade", "Dicas do Assistente IA")
-            }
+            onPress={() => navigation.navigate("InsightsScreen")}
           >
             <View
               style={[styles.iconContainer, { backgroundColor: "#f3e5f5" }]}
