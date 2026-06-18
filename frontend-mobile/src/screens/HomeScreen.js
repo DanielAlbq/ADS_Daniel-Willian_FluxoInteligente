@@ -317,6 +317,7 @@ export default function HomeScreen({ navigation }) {
             icon="folder-open-outline"
             color="#8e24aa"
             onPress={() => navigation.navigate("CadastrosScreen")}
+<<<<<<< HEAD
           />
           <FeatureCard
             title="Insights IA"
@@ -328,6 +329,29 @@ export default function HomeScreen({ navigation }) {
             title="Ajustes"
             icon="settings-outline"
             color="#546e7a"
+=======
+          >
+            <View
+              style={[styles.iconContainer, { backgroundColor: "#fff3e0" }]}
+            >
+              <Text style={styles.menuIcon}>📁</Text>
+            </View>
+            <Text style={styles.menuLabel}>Cadastros</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("InsightsScreen")}
+          >
+            <View
+              style={[styles.iconContainer, { backgroundColor: "#f3e5f5" }]}
+            >
+              <Text style={styles.menuIcon}>🤖</Text>
+            </View>
+            <Text style={styles.menuLabel}>Insights IA</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+>>>>>>> 0b51cc13d7138ad1343916ae769ae8607df103f7
             onPress={() => Alert.alert("Funcionalidade", "Definições do App")}
           />
         </View>

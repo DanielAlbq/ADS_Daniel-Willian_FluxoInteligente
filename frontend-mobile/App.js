@@ -15,6 +15,7 @@ import CadastrosScreen from './src/screens/CadastrosScreen';
 import FornecedorScreen from './src/screens/FornecedorScreen';
 import LancamentoOcrScreen from './src/screens/LancamentoOcrScreen';
 import ExtratoScreen from './src/screens/ExtratoScreen';
+import InsightsScreen from './src/screens/InsightsScreen';
 
 const Stack = createNativeStackNavigator();
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
@@ -265,6 +266,7 @@ export default function App() {
           <Stack.Screen name="ReceitaScreen" component={ReceitaScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DespesaScreen" component={DespesaScreen} options={{ headerShown: false }} />
           <Stack.Screen name="LancamentoOcrScreen" component={LancamentoOcrScreen} options={{ title: 'Escanear Nota' }} />
+          <Stack.Screen name="InsightsScreen" component={InsightsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
