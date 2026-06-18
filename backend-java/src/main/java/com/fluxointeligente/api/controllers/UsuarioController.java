@@ -107,7 +107,8 @@ public class UsuarioController {
 
     // rota para login
     @PostMapping("/login")
-    // Trocamos o tipo de retorno para ResponseEntity<Map> para devolver um JSON formatado
+    // Trocamos o tipo de retorno para ResponseEntity<Map> para devolver um JSON
+    // formatado
     public ResponseEntity<java.util.Map<String, String>> login(@RequestBody java.util.Map<String, String> payload) {
         String email = payload.get("email");
         String senha = payload.get("senha");
@@ -129,6 +130,7 @@ public class UsuarioController {
             java.util.Map<String, String> resposta = new java.util.HashMap<>();
             resposta.put("token", token);
             resposta.put("mensagem", "Login realizado com sucesso!");
+            resposta.put("nome", usuario.getNome());
 
             return ResponseEntity.ok(resposta);
 

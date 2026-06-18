@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { 
+    View, 
+    Text, 
+    TextInput, 
+    TouchableOpacity, 
+    StyleSheet, 
+    Alert, 
+    ActivityIndicator, 
+    ScrollView, 
+    StatusBar,
+    KeyboardAvoidingView, 
+    Platform              
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DespesaScreen({ navigation }) {
     const [descricao, setDescricao] = useState('');
@@ -13,9 +27,9 @@ export default function DespesaScreen({ navigation }) {
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Novos estados para a busca de fornecedor
     const [cnpjBusca, setCnpjBusca] = useState('');
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
+    const [buscandoFornecedor, setBuscandoFornecedor] = useState(false);
 
     const API_URL_LANCAMENTOS = `${process.env.EXPO_PUBLIC_API_URL}/lancamentos`;
     const API_URL_CATEGORIAS = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
@@ -31,61 +45,47 @@ export default function DespesaScreen({ navigation }) {
             const response = await axios.get(`${API_URL_CATEGORIAS}?tipo=DESPESA`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            // ADICIONE ESTA LINHA PARA DEPURAR:
-            console.log("DADOS DA CATEGORIA:", response.data);
-
-            // Se o seu console mostrar um objeto com "content", mude a linha abaixo parra:
-            // setCategorias(response.data.content);
             setCategorias(response.data);
-
         } catch (error) {
             console.error("Erro ao buscar categorias:", error);
             Alert.alert("Erro", "Não foi possível carregar as categorias.");
         }
     };
 
-    // Nova função para buscar o fornecedor pelo CNPJ
     const buscarFornecedorPorCnpj = async () => {
         if (!cnpjBusca) {
-            Alert.alert("Aviso", "Digite um CNPJ para buscar.");
+            Alert.alert("Aviso", "Digite um CNPJ para procurar.");
             return;
         }
 
-        setLoading(true);
+        setBuscandoFornecedor(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
             const response = await axios.get(`${API_URL_FORNECEDORES}/cnpj/${cnpjBusca}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            // Se encontrou, salva o ID para o lançamento e o Nome para feedback visual
             setFornecedorId(response.data.id);
             setNomeFornecedorLocalizado(response.data.nome);
 
         } catch (error) {
-            // Se o backend retornar 404, o fornecedor não existe
             if (error.response && error.response.status === 404) {
                 setFornecedorId(null);
                 setNomeFornecedorLocalizado('');
 
                 Alert.alert(
                     "Fornecedor não encontrado",
-                    "Esse CNPJ não está cadastrado no sistema. Deseja cadastrar agora?",
+                    "Esse CNPJ não está cadastrado. Deseja cadastrar agora?",
                     [
                         { text: "Não", style: "cancel" },
-                        {
-                            text: "Sim",
-                            onPress: () => navigation.navigate('FornecedorScreen', { cnpjPreenchido: cnpjBusca })
-                        }
+                        { text: "Sim", onPress: () => navigation.navigate('FornecedorScreen', { cnpjPreenchido: cnpjBusca }) }
                     ]
                 );
             } else {
-                console.error("Erro ao buscar fornecedor:", error);
-                Alert.alert("Erro", "Falha ao buscar fornecedor. Tente novamente.");
+                Alert.alert("Erro", "Falha ao procurar fornecedor. Tente novamente.");
             }
         } finally {
-            setLoading(false);
+            setBuscandoFornecedor(false);
         }
     };
 
@@ -95,15 +95,12 @@ export default function DespesaScreen({ navigation }) {
             return;
         }
 
-        const valorFormatado = valor.replace(',', '.');
-
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
-
             const payload = {
                 descricao: descricao,
-                valor: parseFloat(valorFormatado),
+                valor: parseFloat(valor.replace(',', '.')),
                 tipo: tipo,
                 data: new Date().toISOString().split('T')[0],
                 categoria: { id: categoriaId },
@@ -115,7 +112,7 @@ export default function DespesaScreen({ navigation }) {
             });
 
             if (response.status === 201 || response.status === 200) {
-                Alert.alert("Sucesso", "Despesa registrada!");
+                Alert.alert("Sucesso", "Despesa registada com sucesso!");
                 navigation.goBack();
             }
         } catch (error) {
@@ -127,94 +124,204 @@ export default function DespesaScreen({ navigation }) {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.title}>Nova Despesa</Text>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Descrição (ex: Mercado)"
-                value={descricao}
-                onChangeText={setDescricao}
-            />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Valor (R$)"
-                keyboardType="numeric"
-                value={valor}
-                onChangeText={setValor}
-            />
-
-            <Text style={styles.label}>Selecione a Categoria:</Text>
-
-            <View style={styles.categoriasGrid}>
-                {categorias.map((cat) => (
-                    <TouchableOpacity
-                        key={cat.id}
-                        style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
-                        onPress={() => setCategoriaId(cat.id)}
-                    >
-                        <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>
-                            {cat.nome}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* Nova seção de Fornecedor */}
-            <Text style={styles.label}>Buscar Fornecedor (CNPJ):</Text>
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={[styles.input, styles.searchInput]}
-                    placeholder="Digite apenas números"
-                    keyboardType="numeric"
-                    value={cnpjBusca}
-                    onChangeText={setCnpjBusca}
-                    onBlur={buscarFornecedorPorCnpj} // Realiza a busca automaticamente ao sair do campo
-                />
-                <TouchableOpacity style={styles.searchButton} onPress={buscarFornecedorPorCnpj} disabled={loading}>
-                    <Text style={styles.searchButtonText}>Buscar</Text>
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+            
+            {/* CABEÇALHO (Fora do KeyboardAvoidingView) */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#d32f2f" />
                 </TouchableOpacity>
+                <Text style={styles.headerTitle}>Nova Despesa</Text>
+                <View style={{ width: 40 }} /> 
             </View>
 
-            {nomeFornecedorLocalizado ? (
-                <Text style={styles.successText}>
-                    ✓ Fornecedor vinculado: {nomeFornecedorLocalizado}
-                </Text>
-            ) : null}
+            {/* PROTEÇÃO AVANÇADA DO TECLADO */}
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20} // Compensa a altura do cabeçalho
+            >
+                <ScrollView 
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled" // Permite clicar em botões mesmo com o teclado aberto
+                >
+                    
+                    <Text style={styles.sectionLabel}>Detalhes da Saída</Text>
+                    
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="document-text-outline" size={20} color="#d32f2f" style={styles.inputIcon} />
+                        <TextInput
+                            style={styles.inputText}
+                            placeholder="Descrição (ex: Material de Escritório)"
+                            placeholderTextColor="#888"
+                            value={descricao}
+                            onChangeText={setDescricao}
+                        />
+                    </View>
 
-            <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>SALVAR DESPESA</Text>}
-            </TouchableOpacity>
-        </ScrollView>
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.currencySymbol}>R$</Text>
+                        <TextInput
+                            style={[styles.inputText, { fontSize: 18, fontWeight: 'bold' }]}
+                            placeholder="0,00"
+                            placeholderTextColor="#888"
+                            keyboardType="numeric"
+                            value={valor}
+                            onChangeText={setValor}
+                        />
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Categoria</Text>
+                    <View style={styles.categoriasGrid}>
+                        {categorias.map((cat) => (
+                            <TouchableOpacity
+                                key={cat.id}
+                                style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
+                                onPress={() => setCategoriaId(cat.id)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>
+                                    {cat.nome}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Fornecedor (Opcional)</Text>
+                    <View style={[styles.inputContainer, { paddingHorizontal: 0, overflow: 'hidden' }]}>
+                        <View style={{ paddingLeft: 15 }}>
+                            <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
+                        </View>
+                        <TextInput
+                            style={[styles.inputText, { paddingHorizontal: 10 }]}
+                            placeholder="Introduza o CNPJ"
+                            placeholderTextColor="#888"
+                            keyboardType="numeric"
+                            value={cnpjBusca}
+                            onChangeText={setCnpjBusca}
+                        />
+                        <TouchableOpacity style={styles.searchButton} onPress={buscarFornecedorPorCnpj} disabled={buscandoFornecedor}>
+                            {buscandoFornecedor ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Ionicons name="search" size={20} color="#fff" />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {nomeFornecedorLocalizado ? (
+                        <View style={styles.successBadge}>
+                            <Ionicons name="checkmark-circle" size={18} color="#2e7d32" />
+                            <Text style={styles.successText}>Vinculado: {nomeFornecedorLocalizado}</Text>
+                        </View>
+                    ) : null}
+
+                    <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loading} activeOpacity={0.8}>
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <>
+                                <Ionicons name="close-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.saveButtonText}>SALVAR DESPESA</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: '#f8f9fa' },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20 },
-    input: { backgroundColor: '#fff', height: 50, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, fontSize: 16 },
-    label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-    categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 30 },
-    catButton: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, margin: 5 },
-    catButtonAtivo: { backgroundColor: '#f44336' },
-    catText: { color: '#555', fontSize: 14 },
+    container: { flex: 1, backgroundColor: '#f8f9fa' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 15,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ffebee',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+    
+    // ATENÇÃO AQUI: paddingBottom foi aumentado para 150 para criar "espaço extra" de rolagem no final da tela
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 150, paddingTop: 10 },
+    
+    sectionLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 10, marginTop: 15 },
+    
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 15,
+        paddingHorizontal: 15,
+        height: 55,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+    },
+    inputIcon: { marginRight: 5 },
+    currencySymbol: { fontSize: 18, fontWeight: 'bold', color: '#d32f2f', marginRight: 10 },
+    inputText: { flex: 1, height: '100%', color: '#333', fontSize: 16 },
+    
+    categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 8 },
+    catButton: { 
+        backgroundColor: '#fff', 
+        paddingVertical: 10, 
+        paddingHorizontal: 16, 
+        borderRadius: 20, 
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    catButtonAtivo: { backgroundColor: '#d32f2f', borderColor: '#d32f2f' },
+    catText: { color: '#555', fontSize: 14, fontWeight: '500' },
     catTextAtivo: { color: '#fff', fontWeight: 'bold' },
 
-    // Novos estilos para a área de busca
-    searchContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    searchInput: { flex: 1, marginBottom: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 },
     searchButton: {
-        backgroundColor: '#555',
-        height: 50,
+        backgroundColor: '#546e7a',
+        width: 55,
+        height: '100%',
+        alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 15,
-        borderTopRightRadius: 8,
-        borderBottomRightRadius: 8
     },
-    searchButtonText: { color: '#fff', fontWeight: 'bold' },
-    successText: { color: '#2e7d32', fontWeight: 'bold', marginBottom: 30, fontSize: 15 },
-
-    saveButton: { backgroundColor: '#d32f2f', height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+    successBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e8f5e9',
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 20,
+    },
+    successText: { color: '#2e7d32', fontWeight: '600', marginLeft: 8, fontSize: 14 },
+    
+    saveButton: { 
+        flexDirection: 'row',
+        backgroundColor: '#d32f2f', 
+        height: 55, 
+        borderRadius: 12, 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        marginTop: 10,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
     saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });

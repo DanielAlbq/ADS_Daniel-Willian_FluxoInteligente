@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { 
+    View, 
+    Text, 
+    TextInput, 
+    TouchableOpacity, 
+    StyleSheet, 
+    Alert, 
+    ActivityIndicator, 
+    ScrollView, 
+    Image, 
+    StatusBar,
+    KeyboardAvoidingView, 
+    Platform              
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker'; // <-- NOVO IMPORT DE PDF
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LancamentoOcrScreen({ navigation }) {
-    // Estados padrão do lançamento
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
     const [data, setData] = useState('');
@@ -18,9 +32,8 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
     const [categorias, setCategorias] = useState([]);
 
-    // Estados do OCR
     const [imageUri, setImageUri] = useState(null);
-    const [isPdf, setIsPdf] = useState(false); // Pra saber se mostramos a imagem ou o ícone do PDF
+    const [isPdf, setIsPdf] = useState(false); 
     const [loadingOcr, setLoadingOcr] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
 
@@ -43,17 +56,14 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
-    // 1. FUNÇÃO DA CÂMERA
     const tirarFoto = async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
         if (permissionResult.granted === false) {
-            Alert.alert("Permissão negada", "É necessário permitir o acesso à câmera para tirar fotos.");
+            Alert.alert("Permissão negada", "É necessário permitir acesso à câmera.");
             return;
         }
 
-        const result = await ImagePicker.launchCameraAsync({
-            quality: 0.7,
-        });
+        const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
 
         if (!result.canceled) {
             setImageUri(result.assets[0].uri);
@@ -62,11 +72,10 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
-    // 2. FUNÇÃO DA GALERIA
     const selecionarImagem = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.granted === false) {
-            Alert.alert("Permissão negada", "É necessário permitir o acesso à galeria.");
+            Alert.alert("Permissão negada", "É necessário permitir acesso à galeria.");
             return;
         }
 
@@ -83,7 +92,6 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
-    // 3. FUNÇÃO DO PDF
     const selecionarPdf = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
@@ -102,18 +110,12 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
-    // Função unificada que recebe o arquivo e o tipo correto!
     const processarOcr = async (uri, mimeType, fileName) => {
         setLoadingOcr(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
-
             const formData = new FormData();
-            formData.append('file', {
-                uri: uri,
-                name: fileName,
-                type: mimeType,
-            });
+            formData.append('file', { uri: uri, name: fileName, type: mimeType });
 
             const response = await axios.post(`${API_URL}/ocr/ler-nota`, formData, {
                 headers: {
@@ -125,20 +127,16 @@ export default function LancamentoOcrScreen({ navigation }) {
             if (response.data.valorTotal) setValor(response.data.valorTotal.toString());
             if (response.data.data) setData(response.data.data);
             if (response.data.descricao) setDescricao(response.data.descricao);
-
             if (response.data.cnpj) {
                 setCnpjBusca(response.data.cnpj);
                 buscarFornecedorPorCnpjOcr(response.data.cnpj);
             }
-
             if (response.data.textoLido) {
                 setTextoLido(response.data.textoLido);
             }
 
             Alert.alert("Sucesso", "Documento processado! Revise os dados extraídos.");
-
         } catch (error) {
-            console.error("Erro no OCR:", error);
             Alert.alert("Erro OCR", "Não foi possível ler os dados do documento.");
         } finally {
             setLoadingOcr(false);
@@ -166,7 +164,6 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
 
         const valorFormatado = valor.replace(',', '.');
-
         let dataParaEnvio = new Date().toISOString().split('T')[0];
 
         if (data) {
@@ -181,7 +178,6 @@ export default function LancamentoOcrScreen({ navigation }) {
         setLoadingSalvar(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
-
             const payload = {
                 descricao: descricao,
                 valor: parseFloat(valorFormatado),
@@ -200,7 +196,6 @@ export default function LancamentoOcrScreen({ navigation }) {
                 navigation.goBack();
             }
         } catch (error) {
-            console.error("Erro ao salvar lançamento:", error);
             Alert.alert("Erro", "Não foi possível salvar a despesa.");
         } finally {
             setLoadingSalvar(false);
@@ -208,93 +203,290 @@ export default function LancamentoOcrScreen({ navigation }) {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <Text style={styles.title}>Lançamento Inteligente</Text>
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
 
-            {/* BARRA DE AÇÕES (CÂMERA, GALERIA, PDF) */}
-            <Text style={styles.label}>Escolha o Comprovante:</Text>
-            <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionButton} onPress={tirarFoto} disabled={loadingOcr}>
-                    <Text style={styles.actionButtonText}>📷 Câmera</Text>
+            {/* CABEÇALHO FIXO */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#1976d2" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={selecionarImagem} disabled={loadingOcr}>
-                    <Text style={styles.actionButtonText}>🖼️ Galeria</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={selecionarPdf} disabled={loadingOcr}>
-                    <Text style={styles.actionButtonText}>📄 PDF</Text>
-                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Leitura Inteligente (OCR)</Text>
+                <View style={{ width: 40 }} /> 
             </View>
 
-            {loadingOcr && <ActivityIndicator color="#1976d2" size="large" style={{ marginVertical: 20 }} />}
+            {/* PROTEÇÃO AVANÇADA DO TECLADO */}
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+            >
+                <ScrollView 
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
 
-            {/* PREVIEW CONDICIONAL (IMAGEM vs PDF) */}
-            {imageUri && !isPdf && !loadingOcr && (
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-            )}
-            {isPdf && !loadingOcr && (
-                <View style={styles.pdfPreview}>
-                    <Text style={styles.pdfPreviewText}>📄 Documento PDF Selecionado</Text>
-                </View>
-            )}
+                    <Text style={styles.sectionLabel}>Escolha o Comprovante</Text>
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity style={styles.actionCard} onPress={tirarFoto} disabled={loadingOcr} activeOpacity={0.7}>
+                            <View style={[styles.iconWrapper, { backgroundColor: '#e3f2fd' }]}>
+                                <Ionicons name="camera-outline" size={28} color="#1976d2" />
+                            </View>
+                            <Text style={styles.actionCardText}>Câmera</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={styles.actionCard} onPress={selecionarImagem} disabled={loadingOcr} activeOpacity={0.7}>
+                            <View style={[styles.iconWrapper, { backgroundColor: '#e8f5e9' }]}>
+                                <Ionicons name="image-outline" size={28} color="#2e7d32" />
+                            </View>
+                            <Text style={styles.actionCardText}>Galeria</Text>
+                        </TouchableOpacity>
 
-            <View style={styles.divider} />
+                        <TouchableOpacity style={styles.actionCard} onPress={selecionarPdf} disabled={loadingOcr} activeOpacity={0.7}>
+                            <View style={[styles.iconWrapper, { backgroundColor: '#ffebee' }]}>
+                                <Ionicons name="document-text-outline" size={28} color="#d32f2f" />
+                            </View>
+                            <Text style={styles.actionCardText}>PDF</Text>
+                        </TouchableOpacity>
+                    </View>
 
-            <Text style={styles.label}>Revise os Dados:</Text>
-            <TextInput style={styles.input} placeholder="Descrição (ex: Mercado)" value={descricao} onChangeText={setDescricao} />
-            <TextInput style={styles.input} placeholder="Valor (R$)" keyboardType="numeric" value={valor} onChangeText={setValor} />
-            <TextInput style={styles.input} placeholder="Data (DD/MM/AAAA)" value={data} onChangeText={setData} />
+                    {loadingOcr && (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator color="#1976d2" size="large" />
+                            <Text style={styles.loadingText}>A processar documento através de IA...</Text>
+                        </View>
+                    )}
 
-            <Text style={styles.label}>Categoria:</Text>
-            <View style={styles.categoriasGrid}>
-                {categorias.map((cat) => (
-                    <TouchableOpacity
-                        key={cat.id}
-                        style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
-                        onPress={() => setCategoriaId(cat.id)}
-                    >
-                        <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>{cat.nome}</Text>
+                    {imageUri && !isPdf && !loadingOcr && (
+                        <View style={styles.previewContainer}>
+                            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                            <View style={styles.previewBadge}>
+                                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                <Text style={styles.previewBadgeText}>Imagem Carregada</Text>
+                            </View>
+                        </View>
+                    )}
+                    {isPdf && !loadingOcr && (
+                        <View style={styles.pdfPreview}>
+                            <Ionicons name="document-text" size={40} color="#d32f2f" />
+                            <Text style={styles.pdfPreviewText}>Documento PDF Pronto</Text>
+                        </View>
+                    )}
+
+                    <Text style={styles.sectionLabel}>Dados Extraídos (Revise)</Text>
+                    
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="pricetag-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <TextInput 
+                            style={styles.inputText} 
+                            placeholder="Descrição (ex: Mercado)" 
+                            placeholderTextColor="#888"
+                            value={descricao} 
+                            onChangeText={setDescricao} 
+                        />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.currencySymbol}>R$</Text>
+                        <TextInput 
+                            style={[styles.inputText, { fontSize: 18, fontWeight: 'bold' }]} 
+                            placeholder="0,00" 
+                            placeholderTextColor="#888"
+                            keyboardType="numeric" 
+                            value={valor} 
+                            onChangeText={setValor} 
+                        />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="calendar-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <TextInput 
+                            style={styles.inputText} 
+                            placeholder="Data (DD/MM/AAAA)" 
+                            placeholderTextColor="#888"
+                            value={data} 
+                            onChangeText={setData} 
+                        />
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Categoria da Despesa</Text>
+                    <View style={styles.categoriasGrid}>
+                        {categorias.map((cat) => (
+                            <TouchableOpacity
+                                key={cat.id}
+                                style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
+                                onPress={() => setCategoriaId(cat.id)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>
+                                    {cat.nome}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Fornecedor (CNPJ LIDO)</Text>
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <TextInput 
+                            style={styles.inputText} 
+                            placeholder="Introduza o CNPJ"
+                            placeholderTextColor="#888"
+                            keyboardType="numeric"
+                            value={cnpjBusca} 
+                            onChangeText={setCnpjBusca} 
+                            onBlur={() => buscarFornecedorPorCnpjOcr(cnpjBusca)} 
+                        />
+                    </View>
+
+                    {nomeFornecedorLocalizado ? (
+                        <View style={styles.successBadge}>
+                            <Ionicons name="checkmark-circle" size={18} color="#2e7d32" />
+                            <Text style={styles.successText}>Vinculado: {nomeFornecedorLocalizado}</Text>
+                        </View>
+                    ) : null}
+
+                    <Text style={styles.sectionLabel}>Texto Bruto Lido (Auditoria)</Text>
+                    <View style={[styles.inputContainer, { height: 100, alignItems: 'flex-start', paddingTop: 10, backgroundColor: '#f0f0f0' }]}>
+                        <TextInput 
+                            style={[styles.inputText, { textAlignVertical: 'top', color: '#555', fontSize: 13 }]} 
+                            value={textoLido} 
+                            multiline={true} 
+                            editable={false} 
+                            placeholder="O texto extraído da imagem aparecerá aqui..."
+                            placeholderTextColor="#aaa"
+                        />
+                    </View>
+
+                    <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loadingSalvar} activeOpacity={0.8}>
+                        {loadingSalvar ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <>
+                                <Ionicons name="save-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
-                ))}
-            </View>
 
-            <Text style={styles.label}>Fornecedor (CNPJ LIDO):</Text>
-            <TextInput style={styles.input} value={cnpjBusca} onChangeText={setCnpjBusca} onBlur={() => buscarFornecedorPorCnpjOcr(cnpjBusca)} />
-
-            {nomeFornecedorLocalizado ? (
-                <Text style={styles.successText}>✓ {nomeFornecedorLocalizado}</Text>
-            ) : null}
-
-            <Text style={styles.label}>Texto Bruto Lido (Auditoria):</Text>
-            <TextInput style={[styles.input, { height: 100 }]} value={textoLido} multiline={true} editable={false} />
-
-            <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loadingSalvar}>
-                {loadingSalvar ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>}
-            </TouchableOpacity>
-        </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: '#f8f9fa' },
-    title: { fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom: 15 },
-    label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
+    container: { flex: 1, backgroundColor: '#f8f9fa' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 15,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#e3f2fd',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+    
+    // Espaço extra para o teclado não cobrir os últimos campos
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 150, paddingTop: 10 },
+    
+    sectionLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 12, marginTop: 15 },
+    
+    actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+    actionCard: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        paddingVertical: 15,
+        alignItems: 'center',
+        marginHorizontal: 4,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+    },
+    iconWrapper: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    actionCardText: { color: '#444', fontSize: 13, fontWeight: '600' },
 
-    actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-    actionButton: { flex: 1, backgroundColor: '#1976d2', height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginHorizontal: 5 },
-    actionButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+    loadingContainer: { alignItems: 'center', justifyContent: 'center', marginVertical: 25 },
+    loadingText: { marginTop: 10, color: '#1976d2', fontWeight: '500' },
 
-    previewImage: { width: '100%', height: 150, borderRadius: 8, marginBottom: 15, resizeMode: 'cover' },
-    pdfPreview: { width: '100%', height: 80, backgroundColor: '#e0e0e0', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed' },
-    pdfPreviewText: { color: '#555', fontWeight: 'bold' },
+    previewContainer: { marginTop: 15, position: 'relative' },
+    previewImage: { width: '100%', height: 180, borderRadius: 12, resizeMode: 'cover', borderWidth: 1, borderColor: '#ddd' },
+    previewBadge: { position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    previewBadgeText: { color: '#fff', fontSize: 12, marginLeft: 5, fontWeight: 'bold' },
 
-    divider: { height: 1, backgroundColor: '#ddd', marginVertical: 15 },
-    input: { backgroundColor: '#fff', height: 50, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 15, marginBottom: 15 },
-    categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
-    catButton: { backgroundColor: '#e0e0e0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, margin: 5 },
-    catButtonAtivo: { backgroundColor: '#f44336' },
-    catText: { color: '#555', fontSize: 14 },
+    pdfPreview: { marginTop: 15, width: '100%', height: 120, backgroundColor: '#fff', borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e0e0e0', borderStyle: 'dashed' },
+    pdfPreviewText: { color: '#555', fontWeight: 'bold', marginTop: 10 },
+
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 15,
+        paddingHorizontal: 15,
+        height: 55,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+    },
+    inputIcon: { marginRight: 10 },
+    currencySymbol: { fontSize: 18, fontWeight: 'bold', color: '#1976d2', marginRight: 10 },
+    inputText: { flex: 1, height: '100%', color: '#333', fontSize: 16 },
+
+    categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 8 },
+    catButton: { 
+        backgroundColor: '#fff', 
+        paddingVertical: 10, 
+        paddingHorizontal: 16, 
+        borderRadius: 20, 
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    catButtonAtivo: { backgroundColor: '#d32f2f', borderColor: '#d32f2f' },
+    catText: { color: '#555', fontSize: 14, fontWeight: '500' },
     catTextAtivo: { color: '#fff', fontWeight: 'bold' },
-    successText: { color: '#2e7d32', fontWeight: 'bold', marginBottom: 20 },
-    saveButton: { backgroundColor: '#2e7d32', height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+
+    successBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f5e9', padding: 10, borderRadius: 8, marginBottom: 20 },
+    successText: { color: '#2e7d32', fontWeight: '600', marginLeft: 8, fontSize: 14 },
+    
+    saveButton: { 
+        flexDirection: 'row',
+        backgroundColor: '#1976d2', 
+        height: 55, 
+        borderRadius: 12, 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        marginTop: 10,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
     saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
