@@ -29,7 +29,7 @@ public class Categoria {
     @Column(nullable = false, length = 100)
     private String nome;
 
-    @Column(nullable = false, length = 200)
+    @Column(length = 200)
     private String descricao;
 
     @Enumerated(EnumType.STRING)

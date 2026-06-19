@@ -27,7 +27,7 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [dadosGrafico, setDadosGrafico] = useState([]);
   const [nomeUsuario, setNomeUsuario] = useState("Empreendedor");
-  
+
   // Novo estado para controlar se os saldos estão visíveis ou ocultos
   const [saldosVisiveis, setSaldosVisiveis] = useState(true);
 
@@ -92,7 +92,7 @@ export default function HomeScreen({ navigation }) {
 
       const coresReceita = ["#66bb6a", "#81c784", "#aed581", "#4db6ac"];
       const coresDespesa = ["#ef5350", "#e57373", "#ffb74d", "#ff8a65", "#ba68c8"];
-      
+
       let recIndex = 0;
       let despIndex = 0;
       const grupos = {};
@@ -165,7 +165,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
       <ScrollView showsVerticalScrollIndicator={false}>
-        
+
         {/* CABEÇALHO */}
         <View style={styles.header}>
           <View>
@@ -179,7 +179,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* CARD PRINCIPAL (AGORA COM GRADIENTE E BOTÃO DE OCULTAR) */}
-        <LinearGradient 
+        <LinearGradient
           colors={['#1b5e20', '#4caf50']} // Gradiente do Verde Escuro para o Verde Médio
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -188,10 +188,10 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardLabel}>Saldo em Caixa</Text>
             <TouchableOpacity onPress={() => setSaldosVisiveis(!saldosVisiveis)}>
-              <Ionicons 
-                name={saldosVisiveis ? "eye-outline" : "eye-off-outline"} 
-                size={22} 
-                color="#c8e6c9" 
+              <Ionicons
+                name={saldosVisiveis ? "eye-outline" : "eye-off-outline"}
+                size={22}
+                color="#c8e6c9"
               />
             </TouchableOpacity>
           </View>
@@ -201,9 +201,9 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <Text style={styles.balanceValue}>{renderizarValor(saldo)}</Text>
           )}
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.statsRow}>
             <TouchableOpacity
               style={styles.statItem}
@@ -272,7 +272,7 @@ export default function HomeScreen({ navigation }) {
                   </View>
                 )}
               />
-              
+
               {/* NOVA LEGENDA ESTILO CHIPS */}
               <View style={styles.legendaContainer}>
                 {dadosGrafico.map((item, index) => (
@@ -317,43 +317,22 @@ export default function HomeScreen({ navigation }) {
             icon="folder-open-outline"
             color="#8e24aa"
             onPress={() => navigation.navigate("CadastrosScreen")}
-<<<<<<< HEAD
+
           />
           <FeatureCard
             title="Insights IA"
             icon="hardware-chip-outline"
             color="#00897b"
-            onPress={() => Alert.alert("Funcionalidade", "Dicas do Assistente IA")}
+            onPress={() => navigation.navigate("InsightsScreen")}
           />
           <FeatureCard
             title="Ajustes"
             icon="settings-outline"
             color="#546e7a"
-=======
-          >
-            <View
-              style={[styles.iconContainer, { backgroundColor: "#fff3e0" }]}
-            >
-              <Text style={styles.menuIcon}>📁</Text>
-            </View>
-            <Text style={styles.menuLabel}>Cadastros</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("InsightsScreen")}
-          >
-            <View
-              style={[styles.iconContainer, { backgroundColor: "#f3e5f5" }]}
-            >
-              <Text style={styles.menuIcon}>🤖</Text>
-            </View>
-            <Text style={styles.menuLabel}>Insights IA</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
->>>>>>> 0b51cc13d7138ad1343916ae769ae8607df103f7
-            onPress={() => Alert.alert("Funcionalidade", "Definições do App")}
+
           />
+          style={styles.menuItem}
+          onPress={() => Alert.alert("Funcionalidade", "Definições do App")}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -433,7 +412,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  
+
   // NOVOS ESTILOS PARA AS LEGENDAS EM CHIP
   legendaContainer: {
     marginTop: 20,
@@ -487,7 +466,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fff",
-    width: (width - 60) / 2, 
+    width: (width - 60) / 2,
     aspectRatio: 1,
     borderRadius: 16,
     padding: 15,

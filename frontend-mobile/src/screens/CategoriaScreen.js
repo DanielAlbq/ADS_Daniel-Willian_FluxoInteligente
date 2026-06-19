@@ -13,6 +13,7 @@ export default function CategoriaScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
     const [loadingList, setLoadingList] = useState(true);
 
+
     const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
 
     useFocusEffect(
@@ -49,7 +50,7 @@ export default function CategoriaScreen({ navigation }) {
             await axios.post(API_URL, { nome, tipo }, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
+
             Alert.alert("Sucesso", "Categoria adicionada!");
             setNome('');
             carregarCategorias();
@@ -64,8 +65,8 @@ export default function CategoriaScreen({ navigation }) {
     const deletarCategoria = async (id) => {
         Alert.alert("Excluir", "Deseja realmente excluir esta categoria?", [
             { text: "Cancelar", style: "cancel" },
-            { 
-                text: "Excluir", 
+            {
+                text: "Excluir",
                 style: "destructive",
                 onPress: async () => {
                     try {
@@ -118,7 +119,7 @@ export default function CategoriaScreen({ navigation }) {
             {/* FORMULÁRIO DE ADIÇÃO */}
             <View style={styles.formContainer}>
                 <Text style={styles.sectionTitle}>Nova Categoria</Text>
-                
+
                 <View style={styles.inputContainer}>
                     <Ionicons name="pricetag-outline" size={20} color="#1976d2" style={styles.inputIcon} />
                     <TextInput
@@ -128,23 +129,26 @@ export default function CategoriaScreen({ navigation }) {
                         value={nome}
                         onChangeText={setNome}
                     />
+
                 </View>
+
 
                 {/* SELETOR DE TIPO (CHIPS) */}
                 <View style={styles.tipoContainer}>
-                    <TouchableOpacity 
-                        style={[styles.tipoBtn, tipo === 'RECEITA' && styles.tipoBtnReceita]} 
+                    <TouchableOpacity
+                        style={[styles.tipoBtn, tipo === 'RECEITA' && styles.tipoBtnReceita]}
                         onPress={() => setTipo('RECEITA')}
                     >
                         <Text style={[styles.tipoTexto, tipo === 'RECEITA' && styles.tipoTextoAtivo]}>Receita</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.tipoBtn, tipo === 'DESPESA' && styles.tipoBtnDespesa]} 
+                    <TouchableOpacity
+                        style={[styles.tipoBtn, tipo === 'DESPESA' && styles.tipoBtnDespesa]}
                         onPress={() => setTipo('DESPESA')}
                     >
                         <Text style={[styles.tipoTexto, tipo === 'DESPESA' && styles.tipoTextoAtivo]}>Despesa</Text>
                     </TouchableOpacity>
                 </View>
+
 
                 <TouchableOpacity style={styles.saveBtn} onPress={salvarCategoria} disabled={loading}>
                     {loading ? (
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-    
+
     formContainer: {
         paddingHorizontal: 20,
         paddingBottom: 20,
@@ -209,7 +213,7 @@ const styles = StyleSheet.create({
         paddingTop: 10,
     },
     sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 15, textTransform: 'uppercase' },
-    
+
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
