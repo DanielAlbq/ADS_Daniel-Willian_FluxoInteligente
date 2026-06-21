@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 
 @Service
 public class LancamentoService {
@@ -106,7 +107,15 @@ public class LancamentoService {
             throw new RuntimeException("Acesso negado: Você não tem permissão para deletar este registro.");
         }
 
-        repository.delete(lancamento);
+        // Se tiver o código de parcelamento, apaga TODAS AS PARCELAS DO GRUPO
+        if (lancamento.getIdentificadorParcelamento() != null) {
+            List<Lancamento> parcelasDoGrupo = repository
+                    .findByIdentificadorParcelamento(lancamento.getIdentificadorParcelamento());
+            repository.deleteAll(parcelasDoGrupo); // Exclui a lista inteira de uma vez
+        } else {
+            // Se for despesa única, apaga só ela
+            repository.delete(lancamento);
+        }
     }
 
     public List<Lancamento> listarExtrato(LocalDate dataInicio, LocalDate dataFim) {
@@ -124,4 +133,56 @@ public class LancamentoService {
         return repository.findByFiltrosExtrato(tipo, dataInicio, dataFim);
     }
 
+    public List<Lancamento> salvarParcelado(Lancamento lancamentoBase, int quantidadeParcelas) {
+        Usuario usuario = getUsuarioLogado();
+        List<Lancamento> parcelasSalvas = new ArrayList<>();
+
+        // Gera um ID ÚNICO para esse grupo de parcelas (ex: "abc-123-def")
+        String idGrupoParcelamento = java.util.UUID.randomUUID().toString();
+
+        BigDecimal valorParcela = lancamentoBase.getValor()
+                .divide(new BigDecimal(quantidadeParcelas), 2, java.math.RoundingMode.HALF_UP);
+        LocalDate dataInicial = lancamentoBase.getData() != null ? lancamentoBase.getData() : LocalDate.now();
+
+        for (int i = 0; i < quantidadeParcelas; i++) {
+            Lancamento parcela = new Lancamento();
+            // ... (copia os dados normais) ...
+            parcela.setUsuario(usuario);
+            parcela.setCategoria(lancamentoBase.getCategoria());
+            parcela.setFornecedor(lancamentoBase.getFornecedor());
+            parcela.setTipo(lancamentoBase.getTipo());
+            parcela.setValor(valorParcela);
+            parcela.setData(dataInicial.plusMonths(i));
+            parcela.setDescricao(lancamentoBase.getDescricao() + " (" + (i + 1) + "/" + quantidadeParcelas + ")");
+
+            // VINCULA A PARCELA AO GRUPO
+            parcela.setIdentificadorParcelamento(idGrupoParcelamento);
+
+            parcelasSalvas.add(repository.save(parcela));
+        }
+        return parcelasSalvas;
+    }
+
+    public Lancamento atualizar(UUID idLancamento, Lancamento dadosAtualizados) {
+        // 1. Busca o lançamento no banco
+        Lancamento existente = repository.findById(idLancamento)
+                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado."));
+
+        Usuario usuarioLogado = getUsuarioLogado();
+
+        // 2. Trava de segurança: impede que alterem lançamentos de outros usuários
+        if (!existente.getUsuario().getIdUsuario().equals(usuarioLogado.getIdUsuario())) {
+            throw new RuntimeException("Acesso negado: Você não tem permissão para editar este registro.");
+        }
+
+        // 3. Atualiza os campos permitidos
+        existente.setDescricao(dadosAtualizados.getDescricao());
+        existente.setValor(dadosAtualizados.getValor());
+        existente.setData(dadosAtualizados.getData()); // Data de vencimento
+        existente.setCategoria(dadosAtualizados.getCategoria());
+        existente.setFornecedor(dadosAtualizados.getFornecedor());
+
+        // 4. Salva e retorna o objeto atualizado
+        return repository.save(existente);
+    }
 }

@@ -29,9 +29,6 @@ public class Categoria {
     @Column(nullable = false, length = 100)
     private String nome;
 
-    @Column(length = 200)
-    private String descricao;
-
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private TipoLancamento tipo;

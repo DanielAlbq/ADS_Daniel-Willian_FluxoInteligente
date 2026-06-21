@@ -3,6 +3,7 @@ package com.fluxointeligente.api.controllers;
 import com.fluxointeligente.api.models.Lancamento;
 import com.fluxointeligente.api.models.TipoLancamento;
 import com.fluxointeligente.api.service.LancamentoService;
+import com.fluxointeligente.api.dtos.LancamentoParceladoDTO;
 
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal; // Importação necessária para o saldo
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +61,24 @@ public class LancamentoController {
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dataFim) {
         List<Lancamento> lancamentos = service.buscarPorFiltros(tipo, dataInicio, dataFim);
         return ResponseEntity.ok(lancamentos);
+    }
+
+    @PostMapping("/parcelado")
+    public ResponseEntity<List<Lancamento>> criarParcelado(@RequestBody LancamentoParceladoDTO dto) {
+        if (dto.getQuantidadeParcelas() == null || dto.getQuantidadeParcelas() <= 1) {
+            Lancamento salvo = service.salvar(dto.getLancamento());
+            return ResponseEntity.status(HttpStatus.CREATED).body(List.of(salvo));
+        }
+
+        List<Lancamento> salvos = service.salvarParcelado(dto.getLancamento(), dto.getQuantidadeParcelas());
+        return ResponseEntity.status(HttpStatus.CREATED).body(salvos);
+    }
+
+    // Atualizar um lançamento existente
+    @PutMapping("/{id}")
+    public ResponseEntity<Lancamento> atualizar(@PathVariable UUID id, @RequestBody Lancamento lancamento) {
+        Lancamento atualizado = service.atualizar(id, lancamento);
+        return ResponseEntity.ok(atualizado);
     }
 
     // Deletar um lançamento com validação de posse

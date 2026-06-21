@@ -22,6 +22,8 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
         // Útil para calcular o total de entradas vs saídas separadamente
         List<Lancamento> findByUsuarioIdUsuarioAndTipo(UUID usuarioId, String tipo);
 
+        List<Lancamento> findByIdentificadorParcelamento(String identificadorParcelamento);
+
         // Busca lançamentos de um usuário em um determinado intervalo de datas
         List<Lancamento> findByUsuarioIdUsuarioAndDataBetween(UUID usuarioId, java.time.LocalDate inicio,
                         java.time.LocalDate fim);

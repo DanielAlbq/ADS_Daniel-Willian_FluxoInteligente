@@ -25,10 +25,13 @@ public class Lancamento {
     @Column(nullable = false, updatable = false)
     private LocalDate data; // Data de inserção
 
+    @Column(name = "identificador_parcelamento")
+    private String identificadorParcelamento;
+
     @PrePersist
     protected void onCreate() {
         if (this.data == null) {
-            this.data = LocalDate.now(); // Define a data de hoje automaticamente antes de salvar
+            this.data = LocalDate.now();
         }
     }
 
