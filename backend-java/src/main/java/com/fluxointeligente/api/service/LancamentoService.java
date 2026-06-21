@@ -1,6 +1,7 @@
 package com.fluxointeligente.api.service;
 
 import com.fluxointeligente.api.models.Lancamento;
+import com.fluxointeligente.api.models.StatusLancamento;
 import com.fluxointeligente.api.models.TipoLancamento;
 import com.fluxointeligente.api.models.Usuario;
 import com.fluxointeligente.api.repositories.LancamentoRepository;
@@ -28,11 +29,6 @@ public class LancamentoService {
     private UsuarioRepository usuarioRepository;
 
     // --- MÉTODOS DE SEGURANÇA ---
-
-    /**
-     * Recupera o usuário logado com base no Token JWT processado pelo
-     * SecurityFilter.
-     */
     private Usuario getUsuarioLogado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String emailLogado = (String) auth.getPrincipal();
@@ -42,28 +38,16 @@ public class LancamentoService {
     }
 
     // --- REGRAS DE NEGÓCIO ---
-
-    /**
-     * Salva um lançamento vinculando-o automaticamente ao dono do token.
-     */
     public Lancamento salvar(Lancamento lancamento) {
         Usuario usuario = getUsuarioLogado();
         lancamento.setUsuario(usuario);
-
-        // 1. Salva no banco de dados (o objeto 'salvo' volta cheio de
-        // Proxies/Fantasmas)
         Lancamento salvo = repository.save(lancamento);
-
-        // 2. Busca o objeto recém-salvo no banco de dados novamente.
-        // Isso obriga o banco a trazer os dados reais da Categoria e do Fornecedor,
-        // garantindo que o seu React Native receba o JSON perfeitamente.
         return repository.findById(salvo.getId()).orElse(salvo);
     }
 
     /**
-     * NOVO MÉTODO: Consolida saldo, receitas e despesas direto pelo Banco de Dados.
-     * Utiliza o padrão DTO (Data Transfer Object) em formato de Map para a
-     * HomeScreen.
+     * DASHBOARD CONSOLIDADO:
+     * Calcula o Saldo Real (Apenas Pagos) e as Previsões (Pendentes)
      */
     public Map<String, BigDecimal> obterResumoDashboard() {
         Usuario usuario = getUsuarioLogado();
@@ -71,60 +55,58 @@ public class LancamentoService {
 
         Map<String, BigDecimal> dashboard = new HashMap<>();
 
-        // Usando o banco de dados (Queries) para fazer a soma pesada (muito mais
-        // rápido)
+        // 1. SALDO REAL (Regime de Caixa - O que realmente aconteceu)
         BigDecimal saldo = repository.calcularSaldoAtual(idUsuario);
-        BigDecimal receitas = repository.somarPorUsuarioETipo(idUsuario, TipoLancamento.RECEITA);
-        BigDecimal despesas = repository.somarPorUsuarioETipo(idUsuario, TipoLancamento.DESPESA);
+        BigDecimal receitasPagas = repository.somarPorUsuarioETipoEStatus(idUsuario, TipoLancamento.RECEITA,
+                StatusLancamento.PAGO);
+        BigDecimal despesasPagas = repository.somarPorUsuarioETipoEStatus(idUsuario, TipoLancamento.DESPESA,
+                StatusLancamento.PAGO);
 
-        // Previne valores nulos caso o usuário seja novo e ainda não tenha lançamentos
+        // 2. PREVISÕES (Regime de Competência - Contas a Pagar/Receber)
+        BigDecimal receitasPendentes = repository.somarPorUsuarioETipoEStatus(idUsuario, TipoLancamento.RECEITA,
+                StatusLancamento.PENDENTE);
+        BigDecimal despesasPendentes = repository.somarPorUsuarioETipoEStatus(idUsuario, TipoLancamento.DESPESA,
+                StatusLancamento.PENDENTE);
+
+        // 3. Montar o JSON de resposta evitando valores nulos
         dashboard.put("saldo", saldo != null ? saldo : BigDecimal.ZERO);
-        dashboard.put("receitas", receitas != null ? receitas : BigDecimal.ZERO);
-        dashboard.put("despesas", despesas != null ? despesas : BigDecimal.ZERO);
+        dashboard.put("receitas", receitasPagas != null ? receitasPagas : BigDecimal.ZERO);
+        dashboard.put("despesas", despesasPagas != null ? despesasPagas : BigDecimal.ZERO);
+        dashboard.put("contasAReceber", receitasPendentes != null ? receitasPendentes : BigDecimal.ZERO);
+        dashboard.put("contasAPagar", despesasPendentes != null ? despesasPendentes : BigDecimal.ZERO);
 
         return dashboard;
     }
 
-    /**
-     * Lista lançamentos garantindo privacidade (apenas os do usuário logado).
-     */
     public List<Lancamento> listarPorUsuarioLogado() {
         Usuario usuario = getUsuarioLogado();
         return repository.findByUsuarioIdUsuario(usuario.getIdUsuario());
     }
 
-    /**
-     * Deleta um registro com verificação de propriedade (Trava de Segurança).
-     */
     public void deletar(UUID idLancamento) {
         Lancamento lancamento = repository.findById(idLancamento)
                 .orElseThrow(() -> new RuntimeException("Lançamento não encontrado."));
 
         Usuario usuarioLogado = getUsuarioLogado();
 
-        // Impede que um usuário delete o lançamento de outro via URL/Postman
         if (!lancamento.getUsuario().getIdUsuario().equals(usuarioLogado.getIdUsuario())) {
             throw new RuntimeException("Acesso negado: Você não tem permissão para deletar este registro.");
         }
 
-        // Se tiver o código de parcelamento, apaga TODAS AS PARCELAS DO GRUPO
         if (lancamento.getIdentificadorParcelamento() != null) {
             List<Lancamento> parcelasDoGrupo = repository
                     .findByIdentificadorParcelamento(lancamento.getIdentificadorParcelamento());
-            repository.deleteAll(parcelasDoGrupo); // Exclui a lista inteira de uma vez
+            repository.deleteAll(parcelasDoGrupo);
         } else {
-            // Se for despesa única, apaga só ela
             repository.delete(lancamento);
         }
     }
 
     public List<Lancamento> listarExtrato(LocalDate dataInicio, LocalDate dataFim) {
         Usuario usuario = getUsuarioLogado();
-
         if (dataInicio != null && dataFim != null) {
             return repository.findByUsuarioIdUsuarioAndDataBetween(usuario.getIdUsuario(), dataInicio, dataFim);
         }
-
         return repository.findByUsuarioIdUsuario(usuario.getIdUsuario());
     }
 
@@ -136,8 +118,6 @@ public class LancamentoService {
     public List<Lancamento> salvarParcelado(Lancamento lancamentoBase, int quantidadeParcelas) {
         Usuario usuario = getUsuarioLogado();
         List<Lancamento> parcelasSalvas = new ArrayList<>();
-
-        // Gera um ID ÚNICO para esse grupo de parcelas (ex: "abc-123-def")
         String idGrupoParcelamento = java.util.UUID.randomUUID().toString();
 
         BigDecimal valorParcela = lancamentoBase.getValor()
@@ -146,7 +126,6 @@ public class LancamentoService {
 
         for (int i = 0; i < quantidadeParcelas; i++) {
             Lancamento parcela = new Lancamento();
-            // ... (copia os dados normais) ...
             parcela.setUsuario(usuario);
             parcela.setCategoria(lancamentoBase.getCategoria());
             parcela.setFornecedor(lancamentoBase.getFornecedor());
@@ -154,8 +133,7 @@ public class LancamentoService {
             parcela.setValor(valorParcela);
             parcela.setData(dataInicial.plusMonths(i));
             parcela.setDescricao(lancamentoBase.getDescricao() + " (" + (i + 1) + "/" + quantidadeParcelas + ")");
-
-            // VINCULA A PARCELA AO GRUPO
+            parcela.setStatus(lancamentoBase.getStatus()); // Mantém o status original
             parcela.setIdentificadorParcelamento(idGrupoParcelamento);
 
             parcelasSalvas.add(repository.save(parcela));
@@ -163,26 +141,44 @@ public class LancamentoService {
         return parcelasSalvas;
     }
 
+    // --- NOVO: Método para o botão "Pagar" no extrato ---
+    public Lancamento marcarComoPago(UUID id) {
+        Lancamento lancamento = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado"));
+
+        lancamento.setStatus(StatusLancamento.PAGO);
+        lancamento.setDataPagamento(LocalDate.now());
+
+        return repository.save(lancamento);
+    }
+
+    // --- CORREÇÃO: Atualização de Lançamento editado ---
     public Lancamento atualizar(UUID idLancamento, Lancamento dadosAtualizados) {
-        // 1. Busca o lançamento no banco
         Lancamento existente = repository.findById(idLancamento)
                 .orElseThrow(() -> new RuntimeException("Lançamento não encontrado."));
 
         Usuario usuarioLogado = getUsuarioLogado();
 
-        // 2. Trava de segurança: impede que alterem lançamentos de outros usuários
         if (!existente.getUsuario().getIdUsuario().equals(usuarioLogado.getIdUsuario())) {
             throw new RuntimeException("Acesso negado: Você não tem permissão para editar este registro.");
         }
 
-        // 3. Atualiza os campos permitidos
         existente.setDescricao(dadosAtualizados.getDescricao());
         existente.setValor(dadosAtualizados.getValor());
-        existente.setData(dadosAtualizados.getData()); // Data de vencimento
+        existente.setData(dadosAtualizados.getData());
         existente.setCategoria(dadosAtualizados.getCategoria());
         existente.setFornecedor(dadosAtualizados.getFornecedor());
 
-        // 4. Salva e retorna o objeto atualizado
+        // Atualiza o status
+        existente.setStatus(dadosAtualizados.getStatus());
+
+        // Regra de datas conforme estado de pagamento
+        if (dadosAtualizados.getStatus() == StatusLancamento.PAGO && existente.getDataPagamento() == null) {
+            existente.setDataPagamento(LocalDate.now());
+        } else if (dadosAtualizados.getStatus() == StatusLancamento.PENDENTE) {
+            existente.setDataPagamento(null);
+        }
+
         return repository.save(existente);
     }
 }

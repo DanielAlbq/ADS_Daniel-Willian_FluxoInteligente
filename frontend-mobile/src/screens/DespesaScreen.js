@@ -39,6 +39,9 @@ export default function DespesaScreen({ navigation, route }) {
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
     const [buscandoFornecedor, setBuscandoFornecedor] = useState(false);
     
+    // --- NOVO ESTADO: Status do Pagamento ---
+    const [isPago, setIsPago] = useState(true);
+
     const [isParcelado, setIsParcelado] = useState(false);
     const [quantidadeParcelas, setQuantidadeParcelas] = useState('2');
 
@@ -53,6 +56,11 @@ export default function DespesaScreen({ navigation, route }) {
             setDescricao(lancamentoEdit.descricao);
             setCategoriaId(lancamentoEdit.categoria?.id);
             setFornecedorId(lancamentoEdit.fornecedor?.id);
+
+            // --- CARREGA O STATUS NA EDIÇÃO ---
+            if (lancamentoEdit.status) {
+                setIsPago(lancamentoEdit.status === 'PAGO');
+            }
 
             if (lancamentoEdit.fornecedor) {
                 setNomeFornecedorLocalizado("Fornecedor já vinculado"); 
@@ -156,7 +164,6 @@ export default function DespesaScreen({ navigation, route }) {
         setValor(valorFormatado);
     };
 
-    // --- DELETAR LANÇAMENTO ---
     const deletarLancamento = () => {
         Alert.alert(
             "Excluir Lançamento?",
@@ -210,10 +217,12 @@ export default function DespesaScreen({ navigation, route }) {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
             const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
 
+            // --- ENVIANDO O STATUS NO PAYLOAD ---
             const payload = {
                 descricao: descricao,
                 valor: valorTratadoParaAPI,
                 tipo: tipo,
+                status: isPago ? 'PAGO' : 'PENDENTE',
                 data: formatarDataAPI(dataEscolhida),
                 categoria: { id: categoriaId },
                 fornecedor: fornecedorId ? { id: fornecedorId } : null
@@ -262,7 +271,6 @@ export default function DespesaScreen({ navigation, route }) {
                 
                 <Text style={styles.headerTitle}>{isModoEdicao ? 'Editar Despesa' : 'Nova Despesa'}</Text>
                 
-                {/* --- LIXEIRA NO CABEÇALHO SÓ APARECE SE FOR EDIÇÃO --- */}
                 {isModoEdicao ? (
                     <TouchableOpacity onPress={deletarLancamento} style={styles.deleteButton}>
                         <Ionicons name="trash-outline" size={24} color="#d32f2f" />
@@ -375,6 +383,22 @@ export default function DespesaScreen({ navigation, route }) {
                             <Text style={styles.successText}>{nomeFornecedorLocalizado}</Text>
                         </View>
                     ) : null}
+
+                    {/* --- INTERFACE DE STATUS DO PAGAMENTO E PARCELAMENTO --- */}
+                    <Text style={styles.sectionLabel}>Configurações de Pagamento</Text>
+                    
+                    <View style={[styles.inputContainer, { justifyContent: 'space-between', paddingVertical: 10, height: 'auto', marginBottom: 10 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name={isPago ? "checkmark-circle" : "time-outline"} size={20} color={isPago ? "#2e7d32" : "#d32f2f"} style={styles.inputIcon} />
+                            <Text style={{ fontSize: 16, color: '#333', marginLeft: 5 }}>A conta já foi paga?</Text>
+                        </View>
+                        <Switch 
+                            value={isPago} 
+                            onValueChange={setIsPago} 
+                            trackColor={{ false: "#ccc", true: "#c8e6c9" }}
+                            thumbColor={isPago ? "#2e7d32" : "#f4f3f4"}
+                        />
+                    </View>
 
                     {!isModoEdicao && (
                         <>

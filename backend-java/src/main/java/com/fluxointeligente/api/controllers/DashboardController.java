@@ -1,13 +1,11 @@
 package com.fluxointeligente.api.controllers;
 
-import com.fluxointeligente.api.dtos.DashboardResumoDTO;
-import com.fluxointeligente.api.models.TipoLancamento;
-import com.fluxointeligente.api.repositories.LancamentoRepository;
+import com.fluxointeligente.api.service.LancamentoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
-
+import java.util.Map;
 import java.math.BigDecimal;
 
 @RestController
@@ -16,29 +14,18 @@ import java.math.BigDecimal;
 public class DashboardController {
 
     @Autowired
-    private LancamentoRepository lancamentoRepository;
-
-    // Importe o UUID lá no topo: import java.util.UUID;
+    private LancamentoService lancamentoService;
 
     @GetMapping("/{usuarioId}/resumo")
-    public ResponseEntity<DashboardResumoDTO> obterResumo(@PathVariable UUID usuarioId) {
+    public ResponseEntity<Map<String, BigDecimal>> obterResumo(@PathVariable UUID usuarioId) {
 
-        // 1. Busca a soma das Receitas (Se for null, assume ZERO)
-        BigDecimal receitas = lancamentoRepository.somarPorUsuarioETipo(usuarioId, TipoLancamento.RECEITA);
-        if (receitas == null)
-            receitas = BigDecimal.ZERO;
+        // Em vez de ir ao repositório fazer os cálculos "na mão", chamamos o Service.
+        // O Service já devolve o Saldo, Receitas Pagas, Despesas Pagas, e as Contas
+        // Pendentes!
+        Map<String, BigDecimal> resumo = lancamentoService.obterResumoDashboard();
 
-        // 2. Busca a soma das Despesas (Se for null, assume ZERO)
-        BigDecimal despesas = lancamentoRepository.somarPorUsuarioETipo(usuarioId, TipoLancamento.DESPESA);
-        if (despesas == null)
-            despesas = BigDecimal.ZERO;
-
-        // 3. Calcula o Saldo (Receitas - Despesas)
-        BigDecimal saldo = receitas.subtract(despesas);
-
-        // 4. Monta a resposta DTO e envia para o app
-        DashboardResumoDTO resumo = new DashboardResumoDTO(saldo, receitas, despesas);
-
+        // O Spring Boot converte automaticamente este Map para um JSON perfeito,
+        // tornando o DashboardResumoDTO desnecessário para este caso.
         return ResponseEntity.ok(resumo);
     }
 }

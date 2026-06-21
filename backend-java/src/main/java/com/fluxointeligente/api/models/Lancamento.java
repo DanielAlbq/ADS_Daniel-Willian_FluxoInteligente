@@ -22,24 +22,34 @@ public class Lancamento {
     @Column(nullable = false)
     private BigDecimal valor;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDate data; // Data de inserção
+    @Column(nullable = false)
+    private LocalDate data;
 
     @Column(name = "identificador_parcelamento")
     private String identificadorParcelamento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusLancamento status = StatusLancamento.PAGO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoLancamento tipo; // RECEITA ou DESPESA
+
+    // Data em que o lançamento foi efetivamente pago/recebido
+    private LocalDate dataPagamento;
 
     @PrePersist
     protected void onCreate() {
         if (this.data == null) {
             this.data = LocalDate.now();
         }
+        // Garante a consistência: se tem data de pagamento, o status não pode ser
+        // pendente
+        if (this.dataPagamento != null && this.status == StatusLancamento.PENDENTE) {
+            this.status = StatusLancamento.PAGO;
+        }
     }
-
-    @Enumerated(EnumType.STRING)
-    private TipoLancamento tipo; // RECEITA ou DESPESA
-
-    // Se estiver nulo, o sistema entende que foi uma compra à vista
-    private LocalDate dataPagamento;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)

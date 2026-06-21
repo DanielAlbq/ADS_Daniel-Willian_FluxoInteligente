@@ -1,6 +1,7 @@
 package com.fluxointeligente.api.repositories;
 
 import com.fluxointeligente.api.models.Lancamento;
+import com.fluxointeligente.api.models.StatusLancamento;
 import com.fluxointeligente.api.models.TipoLancamento;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,28 +16,29 @@ import java.util.UUID;
 @Repository
 public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
 
-        // Busca todos os lançamentos de um usuário específico
+        // Busca todos os lançamentos de um utilizador específico
         List<Lancamento> findByUsuarioIdUsuario(UUID usuarioId);
 
-        // Busca lançamentos por tipo (RECEITA/DESPESA) de um usuário
-        // Útil para calcular o total de entradas vs saídas separadamente
         List<Lancamento> findByUsuarioIdUsuarioAndTipo(UUID usuarioId, String tipo);
 
         List<Lancamento> findByIdentificadorParcelamento(String identificadorParcelamento);
 
-        // Busca lançamentos de um usuário em um determinado intervalo de datas
         List<Lancamento> findByUsuarioIdUsuarioAndDataBetween(UUID usuarioId, java.time.LocalDate inicio,
                         java.time.LocalDate fim);
 
-        @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo")
-        BigDecimal somarPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
+        // --- MUDANÇA AQUI: Filtramos agora pelo STATUS também ---
+        @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.status = :status")
+        BigDecimal somarPorUsuarioETipoEStatus(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo,
+                        @Param("status") StatusLancamento status);
 
-        // filtro para lancamentos futuros
+        // filtro para lancamentos futuros (mantido para compatibilidade, caso use
+        // noutro lado)
         @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.data > CURRENT_DATE")
         BigDecimal somarPrevistoPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
 
+        // --- MUDANÇA AQUI: O Saldo Atual SÓ SOMA O QUE ESTÁ PAGO ---
         @Query("SELECT COALESCE(SUM(CASE WHEN l.tipo = 'RECEITA' THEN l.valor ELSE -l.valor END), 0) "
-                        + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario")
+                        + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario AND l.status = 'PAGO'")
         BigDecimal calcularSaldoAtual(@Param("idUsuario") UUID idUsuario);
 
         // Busca os lançamentos por período (mês/ano) e pelo tipo.

@@ -147,10 +147,12 @@ export default function ReceitaScreen({ navigation, route }) {
             // Remove a máscara (pontos e vírgula) para enviar o float correto
             const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
 
+            // --- AQUI ESTÁ O AJUSTE "POR DEBAIXO DOS PANOS" ---
             const payload = {
                 descricao: descricao,
                 valor: valorTratadoParaAPI,
                 tipo: tipo,
+                status: 'PAGO', // Força o backend a aceitar como pago e contabilizar no saldo
                 data: formatarDataAPI(data), 
                 categoria: { id: categoriaId }
             };

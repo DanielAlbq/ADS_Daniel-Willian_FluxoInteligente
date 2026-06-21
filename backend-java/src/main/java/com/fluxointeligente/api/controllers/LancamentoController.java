@@ -81,6 +81,12 @@ public class LancamentoController {
         return ResponseEntity.ok(atualizado);
     }
 
+    @PatchMapping("/{id}/pagar")
+    public ResponseEntity<Lancamento> marcarComoPago(@PathVariable UUID id) {
+        Lancamento lancamentoPago = service.marcarComoPago(id);
+        return ResponseEntity.ok(lancamentoPago);
+    }
+
     // Deletar um lançamento com validação de posse
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable UUID id) {

@@ -34,6 +34,10 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [categorias, setCategorias] = useState([]);
     const [dataEscolhida, setDataEscolhida] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    
+    // --- NOVO ESTADO: Status do Pagamento ---
+    const [isPago, setIsPago] = useState(true);
+
     const [isParcelado, setIsParcelado] = useState(false);
     const [quantidadeParcelas, setQuantidadeParcelas] = useState('2');
 
@@ -41,7 +45,6 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [isPdf, setIsPdf] = useState(false); 
     const [loadingOcr, setLoadingOcr] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
-
 
     const API_URL = process.env.EXPO_PUBLIC_API_URL;
     const API_URL_LANCAMENTOS = `${API_URL}/lancamentos`;
@@ -161,7 +164,6 @@ export default function LancamentoOcrScreen({ navigation }) {
                 },
             });
 
-            // Passa o valor recebido pela máscara
             if (response.data.valorTotal) {
                 formatarMoeda(response.data.valorTotal.toString());
             }
@@ -235,10 +237,12 @@ export default function LancamentoOcrScreen({ navigation }) {
             
             const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
 
+            // --- ENVIANDO O STATUS NO PAYLOAD ---
             const payload = {
                 descricao: descricao,
                 valor: valorTratadoParaAPI,
                 tipo: tipo,
+                status: isPago ? 'PAGO' : 'PENDENTE',
                 data: formatarDataAPI(dataEscolhida),
                 categoria: { id: categoriaId },
                 fornecedor: fornecedorId ? { id: fornecedorId } : null
@@ -367,7 +371,6 @@ export default function LancamentoOcrScreen({ navigation }) {
                     />
                 </View>
 
-                {/* --- BOTÃO DE SELEÇÃO DE DATA --- */}
                 <TouchableOpacity 
                     style={styles.inputContainer} 
                     onPress={() => setShowDatePicker(true)}
@@ -389,7 +392,6 @@ export default function LancamentoOcrScreen({ navigation }) {
                         onChange={onChangeDate}
                     />
                 )}
-                {/* -------------------------------- */}
 
                 <Text style={styles.sectionLabel}>Categoria da Despesa</Text>
                 <View style={styles.categoriasGrid}>
@@ -428,7 +430,22 @@ export default function LancamentoOcrScreen({ navigation }) {
                     </View>
                 ) : null}
 
-                {/* --- SEÇÃO DE PARCELAMENTO INCLUÍDA --- */}
+                {/* --- INTERFACE DE STATUS DO PAGAMENTO E PARCELAMENTO --- */}
+                <Text style={styles.sectionLabel}>Configurações de Pagamento</Text>
+                
+                <View style={[styles.inputContainer, { justifyContent: 'space-between', paddingVertical: 10, height: 'auto', marginBottom: 10 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name={isPago ? "checkmark-circle" : "time-outline"} size={20} color={isPago ? "#1976d2" : "#666"} style={styles.inputIcon} />
+                        <Text style={{ fontSize: 16, color: '#333' }}>A conta já foi paga?</Text>
+                    </View>
+                    <Switch 
+                        value={isPago} 
+                        onValueChange={setIsPago} 
+                        trackColor={{ false: "#ccc", true: "#bbdefb" }}
+                        thumbColor={isPago ? "#1976d2" : "#f4f3f4"}
+                    />
+                </View>
+
                 <View style={[styles.inputContainer, { justifyContent: 'space-between', paddingVertical: 10, height: 'auto' }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Ionicons name="albums-outline" size={20} color="#666" style={styles.inputIcon} />

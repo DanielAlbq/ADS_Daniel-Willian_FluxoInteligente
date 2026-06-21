@@ -68,6 +68,7 @@ export default function ExtratoScreen({ route, navigation }) {
             let rec = 0;
             let desp = 0;
             dados.forEach(item => {
+                // Aqui podemos até somar só os pagos se quisermos, mas como é extrato, geralmente mostra tudo
                 if (item.tipo === 'RECEITA') rec += item.valor;
                 if (item.tipo === 'DESPESA') desp += item.valor;
             });
@@ -79,6 +80,30 @@ export default function ExtratoScreen({ route, navigation }) {
             Alert.alert("Erro", "Não foi possível carregar o extrato.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // --- NOVA FUNÇÃO: DAR BAIXA NUM LANÇAMENTO ---
+    const darBaixaLancamento = async (idLancamento) => {
+        try {
+            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+            const response = await fetch(`${API_URL}/${idLancamento}/pagar`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                Alert.alert('Sucesso', 'Conta marcada como paga!');
+                carregarExtrato(); // Recarrega a lista para atualizar a cor e remover o botão
+            } else {
+                Alert.alert('Erro', 'Não foi possível atualizar o status da conta.');
+            }
+        } catch (error) {
+            console.error("Erro ao dar baixa", error);
+            Alert.alert('Erro', 'Ocorreu um erro ao conectar com o servidor.');
         }
     };
 
@@ -119,14 +144,16 @@ export default function ExtratoScreen({ route, navigation }) {
             return;
         }
         try {
-            let csvString = "Data;Descricao;Tipo;Valor\n";
+            let csvString = "Data;Descricao;Tipo;Status;Fornecedor;Valor\n";
             lancamentos.forEach((l) => {
                 const dataFormatada = formatarDataExibicao(l.dataPagamento || l.data);
                 const valorFormatado = new Intl.NumberFormat("pt-BR", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                 }).format(l.valor);
-                csvString += `${dataFormatada};${l.descricao};${l.tipo};${valorFormatado}\n`;
+                const nomeFornecedor = l.fornecedor ? l.fornecedor.nome : "";
+                
+                csvString += `${dataFormatada};${l.descricao};${l.tipo};${l.status};${nomeFornecedor};${valorFormatado}\n`;
             });
 
             const hoje = new Date();
@@ -157,11 +184,12 @@ export default function ExtratoScreen({ route, navigation }) {
                 const dataFormatada = formatarDataExibicao(l.dataPagamento || l.data);
                 const corValor = l.tipo === "RECEITA" ? "green" : "red";
                 const sinal = l.tipo === "RECEITA" ? "+" : "-";
+                const nomeFornecedor = l.fornecedor ? `<br><small style="color: #666;">Fornecedor: ${l.fornecedor.nome}</small>` : "";
 
                 htmlRows += `
                     <tr>
                         <td style="padding: 8px; border-bottom: 1px solid #ddd;">${dataFormatada}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${l.descricao}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${l.descricao} ${nomeFornecedor}</td>
                         <td style="padding: 8px; border-bottom: 1px solid #ddd; color: ${corValor}; text-align: right;">
                             ${sinal} ${formatarMoeda(l.valor)}
                         </td>
@@ -188,6 +216,8 @@ export default function ExtratoScreen({ route, navigation }) {
                             </tbody>
                         </table>
                         <h3 style="text-align: right; margin-top: 20px;">
+                            Total Entradas: ${formatarMoeda(totalReceitas)} <br>
+                            Total Saídas: ${formatarMoeda(totalDespesas)} <br>
                             Saldo do Período: ${formatarMoeda(totalReceitas - totalDespesas)}
                         </h3>
                     </body>
@@ -209,11 +239,10 @@ export default function ExtratoScreen({ route, navigation }) {
         }
     };
 
-    // --- ITEM ATUALIZADO ---
+    // --- ITEM DO EXTRATO ATUALIZADO COM FORNECEDOR E STATUS ---
     const renderItem = ({ item }) => {
         const isReceita = item.tipo === 'RECEITA';
 
-        // Função que direciona para a tela correta enviando os dados para edição
         const handleEdit = () => {
             if (isReceita) {
                 navigation.navigate('ReceitaScreen', { lancamentoEdit: item });
@@ -238,12 +267,47 @@ export default function ExtratoScreen({ route, navigation }) {
                 
                 <View style={styles.infoContainer}>
                     <Text style={styles.descricaoText} numberOfLines={1}>{item.descricao}</Text>
-                    <Text style={styles.categoriaText}>{item.categoria?.nome || 'Sem Categoria'} • {formatarDataExibicao(item.dataPagamento || item.data)}</Text>
+                    
+                    <Text style={styles.categoriaText}>
+                        {item.categoria?.nome || 'Sem Categoria'} • {formatarDataExibicao(item.dataPagamento || item.data)}
+                    </Text>
+
+                    {/* --- EXIBE O FORNECEDOR SE EXISTIR --- */}
+                    {item.fornecedor && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                            <Ionicons name="business-outline" size={13} color="#666" style={{ marginRight: 4 }} />
+                            <Text style={{ fontSize: 12, color: '#666' }}>
+                                {item.fornecedor.nome}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* --- EXIBE O STATUS (PAGO/PENDENTE) --- */}
+                    <Text style={{ 
+                        fontSize: 11, 
+                        fontWeight: 'bold', 
+                        marginTop: 4,
+                        color: item.status === 'PAGO' ? '#2e7d32' : '#f57c00' 
+                    }}>
+                        {item.status === 'PAGO' ? 'PAGO' : 'PENDENTE'}
+                    </Text>
                 </View>
                 
-                <Text style={[styles.valorText, { color: isReceita ? '#2e7d32' : '#d32f2f' }]}>
-                    {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
-                </Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.valorText, { color: isReceita ? '#2e7d32' : '#d32f2f' }]}>
+                        {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
+                    </Text>
+
+                    {/* --- BOTÃO "PAGAR" APARECE APENAS SE ESTIVER PENDENTE --- */}
+                    {item.status === 'PENDENTE' && (
+                        <TouchableOpacity 
+                            style={styles.btnPagarPequeno} 
+                            onPress={() => darBaixaLancamento(item.id)}
+                        >
+                            <Text style={styles.btnPagarTexto}>Dar Baixa</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </TouchableOpacity>
         );
     };
@@ -252,7 +316,6 @@ export default function ExtratoScreen({ route, navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
 
-            {/* CABEÇALHO */}
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -261,7 +324,6 @@ export default function ExtratoScreen({ route, navigation }) {
                     <Text style={styles.headerTitle}>Extrato</Text>
                 </View>
                 
-                {/* BOTÕES DE EXPORTAÇÃO */}
                 <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity onPress={exportarPDF} style={styles.exportBtn}>
                         <Ionicons name="document-text" size={16} color="#d32f2f" />
@@ -274,7 +336,6 @@ export default function ExtratoScreen({ route, navigation }) {
                 </View>
             </View>
 
-            {/* FILTROS DE TIPO (CHIPS) */}
             <View style={styles.filtrosRow}>
                 <TouchableOpacity 
                     style={[styles.chipFiltro, tipoFiltro === 'TODOS' && styles.chipFiltroAtivo]} 
@@ -296,7 +357,6 @@ export default function ExtratoScreen({ route, navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* SELETOR DE MÊS/ANO */}
             <View style={styles.mesSelector}>
                 <TouchableOpacity onPress={mesAnterior} style={styles.setaMes}>
                     <Ionicons name="chevron-back" size={24} color="#555" />
@@ -307,7 +367,6 @@ export default function ExtratoScreen({ route, navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* RESUMO DO PERÍODO */}
             <View style={styles.resumoContainer}>
                 <View style={styles.resumoItem}>
                     <Text style={styles.resumoLabel}>Entradas</Text>
@@ -320,7 +379,6 @@ export default function ExtratoScreen({ route, navigation }) {
                 </View>
             </View>
 
-            {/* LISTA DE LANÇAMENTOS */}
             {loading ? (
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" color="#2e7d32" />
@@ -366,7 +424,6 @@ const styles = StyleSheet.create({
     },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginLeft: 15 },
     
-    // Novos botões de exportação em "pílula"
     exportBtn: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -390,7 +447,6 @@ const styles = StyleSheet.create({
         marginLeft: 6
     },
     
-    // Filtros
     filtrosRow: {
         flexDirection: 'row',
         paddingHorizontal: 20,
@@ -413,7 +469,6 @@ const styles = StyleSheet.create({
     textoFiltro: { color: '#666', fontWeight: '600', fontSize: 13 },
     textoFiltroAtivo: { color: '#fff', fontWeight: 'bold' },
 
-    // Seletor de Mês
     mesSelector: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -424,7 +479,6 @@ const styles = StyleSheet.create({
     mesTexto: { fontSize: 16, fontWeight: 'bold', color: '#333' },
     setaMes: { padding: 5 },
 
-    // Resumo
     resumoContainer: {
         flexDirection: 'row',
         backgroundColor: '#fff',
@@ -443,7 +497,6 @@ const styles = StyleSheet.create({
     resumoValor: { fontSize: 16, fontWeight: 'bold' },
     linhaVertical: { width: 1, backgroundColor: '#eee' },
 
-    // Lista
     listContainer: { paddingHorizontal: 20, paddingBottom: 40 },
     cardLancamento: {
         flexDirection: 'row',
@@ -471,7 +524,25 @@ const styles = StyleSheet.create({
     categoriaText: { fontSize: 12, color: '#888' },
     valorText: { fontSize: 15, fontWeight: 'bold' },
 
-    // Utilitários
+    // Estilos do Botão Dar Baixa
+    btnPagarPequeno: {
+        backgroundColor: '#f57c00', // Laranja para chamar a atenção
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        marginTop: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+    },
+    btnPagarTexto: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 50 },
     emptyText: { fontSize: 16, fontWeight: 'bold', color: '#555', marginTop: 15 },
