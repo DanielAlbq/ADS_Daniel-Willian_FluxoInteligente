@@ -329,10 +329,8 @@ export default function HomeScreen({ navigation }) {
             title="Ajustes"
             icon="settings-outline"
             color="#546e7a"
-
+            onPress={() => Alert.alert("Funcionalidade", "Definições do App")}
           />
-          style={styles.menuItem}
-          onPress={() => Alert.alert("Funcionalidade", "Definições do App")}
         </View>
       </ScrollView>
     </SafeAreaView>

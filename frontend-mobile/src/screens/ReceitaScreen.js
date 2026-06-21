@@ -18,7 +18,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function ReceitaScreen({ navigation }) {
+export default function ReceitaScreen({ navigation, route }) {
+    const lancamentoEdit = route.params?.lancamentoEdit || null;
+    const isModoEdicao = !!lancamentoEdit;
+
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
     const [data, setData] = useState(new Date()); 
@@ -34,6 +37,21 @@ export default function ReceitaScreen({ navigation }) {
 
     useEffect(() => {
         carregarCategorias();
+        if (isModoEdicao) {
+            setDescricao(lancamentoEdit.descricao);
+            setCategoriaId(lancamentoEdit.categoria?.id);
+
+            // Formata o valor do banco para a máscara de moeda
+            if (lancamentoEdit.valor) {
+                const valorStringParaMascara = lancamentoEdit.valor.toFixed(2).toString();
+                formatarMoeda(valorStringParaMascara);
+            }
+
+            if (lancamentoEdit.data) {
+                const [ano, mes, dia] = lancamentoEdit.data.split('-');
+                setData(new Date(ano, mes - 1, dia));
+            }
+        }
     }, []);
 
     const carregarCategorias = async () => {
@@ -49,6 +67,73 @@ export default function ReceitaScreen({ navigation }) {
         }
     };
 
+    // --- FUNÇÕES DE DATA E MOEDA ---
+    const onChangeDate = (event, selectedDate) => {
+        const currentDate = selectedDate || data;
+        setShowPicker(Platform.OS === 'ios');
+        setData(currentDate);
+    };
+
+    const formatarDataVisual = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    };
+
+    const formatarDataAPI = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    const formatarMoeda = (texto) => {
+        let valorLimpo = String(texto).replace(/\D/g, '');
+
+        if (valorLimpo === '') {
+            setValor('');
+            return;
+        }
+
+        const valorNumerico = (parseInt(valorLimpo, 10) / 100).toFixed(2);
+        const valorFormatado = valorNumerico
+            .replace('.', ',')
+            .replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+
+        setValor(valorFormatado);
+    };
+
+    // --- EXCLUSÃO DE RECEITA ---
+    const deletarLancamento = () => {
+        Alert.alert(
+            "Excluir Receita?",
+            "Esta ação não pode ser desfeita.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { 
+                    text: "Excluir", 
+                    style: "destructive",
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+                            await axios.delete(`${API_URL_LANCAMENTOS}/${lancamentoEdit.id}`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            Alert.alert("Sucesso", "Receita excluída!");
+                            navigation.goBack();
+                        } catch (error) {
+                            Alert.alert("Erro", "Não foi possível excluir a receita.");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const salvarLancamento = async () => {
         if (!descricao || !valor || !categoriaId) {
             Alert.alert("Aviso", "Preencha a descrição, valor e escolha uma categoria.");
@@ -58,22 +143,34 @@ export default function ReceitaScreen({ navigation }) {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
-            const dataISO = data.toISOString().split('T')[0];
+            
+            // Remove a máscara (pontos e vírgula) para enviar o float correto
+            const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
 
             const payload = {
                 descricao: descricao,
-                valor: parseFloat(valor.replace(',', '.')),
+                valor: valorTratadoParaAPI,
                 tipo: tipo,
-                dataPagamento: dataISO, 
+                data: formatarDataAPI(data), 
                 categoria: { id: categoriaId }
             };
 
-            const response = await axios.post(API_URL_LANCAMENTOS, payload, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            let response;
+
+            if (isModoEdicao) {
+                // Atualizar
+                response = await axios.put(`${API_URL_LANCAMENTOS}/${lancamentoEdit.id}`, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else {
+                // Criar
+                response = await axios.post(API_URL_LANCAMENTOS, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
 
             if (response.status === 201 || response.status === 200) {
-                Alert.alert("Sucesso", "Receita registada com sucesso!");
+                Alert.alert("Sucesso", isModoEdicao ? "Receita atualizada com sucesso!" : "Receita registada com sucesso!");
                 navigation.goBack();
             }
         } catch (error) {
@@ -88,25 +185,32 @@ export default function ReceitaScreen({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
             
-            {/* CABEÇALHO FORA DO KEYBOARD AVOIDING VIEW */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#2e7d32" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Nova Receita</Text>
-                <View style={{ width: 40 }} /> 
+                
+                <Text style={styles.headerTitle}>{isModoEdicao ? 'Editar Receita' : 'Nova Receita'}</Text>
+                
+                {/* LIXEIRA (Só exibe se estiver editando) */}
+                {isModoEdicao ? (
+                    <TouchableOpacity onPress={deletarLancamento} style={styles.deleteButton}>
+                        <Ionicons name="trash-outline" size={24} color="#d32f2f" />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ width: 40 }} /> 
+                )}
             </View>
 
-            {/* PROTEÇÃO AVANÇADA DO TECLADO */}
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20} // Compensa a altura do cabeçalho
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
             >
                 <ScrollView 
                     showsVerticalScrollIndicator={false} 
                     contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled" // Permite clicar em botões mesmo com o teclado aberto
+                    keyboardShouldPersistTaps="handled"
                 >
                     
                     <Text style={styles.sectionLabel}>Detalhes da Entrada</Text>
@@ -130,14 +234,16 @@ export default function ReceitaScreen({ navigation }) {
                             placeholderTextColor="#888"
                             keyboardType="numeric"
                             value={valor}
-                            onChangeText={setValor}
+                            onChangeText={formatarMoeda}
                         />
                     </View>
 
                     <Text style={styles.sectionLabel}>Data de Recebimento</Text>
                     <TouchableOpacity style={styles.inputContainer} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
                         <Ionicons name="calendar-outline" size={20} color="#2e7d32" style={styles.inputIcon} />
-                        <Text style={styles.dateText}>{data.toLocaleDateString('pt-BR')}</Text>
+                        <View style={{ flex: 1, justifyContent: 'center', height: '100%' }}>
+                            <Text style={styles.dateText}>{formatarDataVisual(data)}</Text>
+                        </View>
                         <Ionicons name="chevron-down" size={20} color="#888" />
                     </TouchableOpacity>
 
@@ -146,10 +252,7 @@ export default function ReceitaScreen({ navigation }) {
                             value={data}
                             mode="date"
                             display="default"
-                            onChange={(event, selectedDate) => {
-                                setShowPicker(false);
-                                if (selectedDate) setData(selectedDate);
-                            }}
+                            onChange={onChangeDate}
                         />
                     )}
 
@@ -174,8 +277,8 @@ export default function ReceitaScreen({ navigation }) {
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <>
-                                <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                                <Text style={styles.saveButtonText}>SALVAR RECEITA</Text>
+                                <Ionicons name={isModoEdicao ? "save-outline" : "checkmark-circle-outline"} size={22} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.saveButtonText}>{isModoEdicao ? "ATUALIZAR RECEITA" : "SALVAR RECEITA"}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -203,9 +306,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    deleteButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ffebee',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
     
-    // ATENÇÃO AQUI: paddingBottom foi aumentado para 150 para criar "espaço extra" de rolagem no final da tela
     scrollContent: { paddingHorizontal: 20, paddingBottom: 150, paddingTop: 10 },
     
     sectionLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 10, marginTop: 15 },
@@ -229,7 +339,7 @@ const styles = StyleSheet.create({
     inputIcon: { marginRight: 10 },
     currencySymbol: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32', marginRight: 10 },
     inputText: { flex: 1, height: '100%', color: '#333', fontSize: 16 },
-    dateText: { flex: 1, fontSize: 16, color: '#333' },
+    dateText: { fontSize: 16, color: '#333' },
     
     categoriasGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20, gap: 8 },
     catButton: { 

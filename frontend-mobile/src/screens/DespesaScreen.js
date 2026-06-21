@@ -16,13 +16,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { Switch } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function DespesaScreen({ navigation }) {
+export default function DespesaScreen({ navigation, route }) {
+    const lancamentoEdit = route.params?.lancamentoEdit || null;
+    const isModoEdicao = !!lancamentoEdit;
+
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
     const [fornecedorId, setFornecedorId] = useState(null);
+
+    const [dataEscolhida, setDataEscolhida] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -30,6 +38,9 @@ export default function DespesaScreen({ navigation }) {
     const [cnpjBusca, setCnpjBusca] = useState('');
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
     const [buscandoFornecedor, setBuscandoFornecedor] = useState(false);
+    
+    const [isParcelado, setIsParcelado] = useState(false);
+    const [quantidadeParcelas, setQuantidadeParcelas] = useState('2');
 
     const API_URL_LANCAMENTOS = `${process.env.EXPO_PUBLIC_API_URL}/lancamentos`;
     const API_URL_CATEGORIAS = `${process.env.EXPO_PUBLIC_API_URL}/categorias`;
@@ -37,6 +48,26 @@ export default function DespesaScreen({ navigation }) {
 
     useEffect(() => {
         carregarCategorias();
+
+        if (isModoEdicao) {
+            setDescricao(lancamentoEdit.descricao);
+            setCategoriaId(lancamentoEdit.categoria?.id);
+            setFornecedorId(lancamentoEdit.fornecedor?.id);
+
+            if (lancamentoEdit.fornecedor) {
+                setNomeFornecedorLocalizado("Fornecedor já vinculado"); 
+            }
+
+            if (lancamentoEdit.valor) {
+                const valorStringParaMascara = lancamentoEdit.valor.toFixed(2).toString();
+                formatarMoeda(valorStringParaMascara);
+            }
+
+            if (lancamentoEdit.data) {
+                const [ano, mes, dia] = lancamentoEdit.data.split('-');
+                setDataEscolhida(new Date(ano, mes - 1, dia));
+            }
+        }
     }, []);
 
     const carregarCategorias = async () => {
@@ -50,6 +81,26 @@ export default function DespesaScreen({ navigation }) {
             console.error("Erro ao buscar categorias:", error);
             Alert.alert("Erro", "Não foi possível carregar as categorias.");
         }
+    };
+
+    const onChangeDate = (event, selectedDate) => {
+        const currentDate = selectedDate || dataEscolhida;
+        setShowDatePicker(Platform.OS === 'ios'); 
+        setDataEscolhida(currentDate);
+    };
+
+    const formatarDataVisual = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    };
+
+    const formatarDataAPI = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${ano}-${mes}-${dia}`;
     };
 
     const buscarFornecedorPorCnpj = async () => {
@@ -89,30 +140,107 @@ export default function DespesaScreen({ navigation }) {
         }
     };
 
+    const formatarMoeda = (texto) => {
+        let valorLimpo = String(texto).replace(/\D/g, '');
+
+        if (valorLimpo === '') {
+            setValor('');
+            return;
+        }
+
+        const valorNumerico = (parseInt(valorLimpo, 10) / 100).toFixed(2);
+        const valorFormatado = valorNumerico
+            .replace('.', ',')
+            .replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+
+        setValor(valorFormatado);
+    };
+
+    // --- DELETAR LANÇAMENTO ---
+    const deletarLancamento = () => {
+        Alert.alert(
+            "Excluir Lançamento?",
+            "Esta ação não pode ser desfeita. ATENÇÃO: Se esta for uma despesa parcelada, TODAS as parcelas vinculadas a ela serão excluídas automaticamente.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                { 
+                    text: "Excluir", 
+                    style: "destructive",
+                    onPress: async () => {
+                        setLoading(true);
+                        try {
+                            const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+                            await axios.delete(`${API_URL_LANCAMENTOS}/${lancamentoEdit.id}`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            Alert.alert("Sucesso", "Lançamento excluído!");
+                            navigation.goBack();
+                        } catch (error) {
+                            Alert.alert("Erro", "Não foi possível excluir a despesa.");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const salvarLancamento = async () => {
         if (!descricao || !valor || !categoriaId) {
             Alert.alert("Aviso", "Preencha a descrição, valor e escolha uma categoria.");
             return;
         }
 
+        if (isParcelado && !isModoEdicao) {
+            if (!quantidadeParcelas || quantidadeParcelas.trim() === '') {
+                Alert.alert("Aviso", "A quantidade de parcelas não pode ficar vazia.");
+                return;
+            }
+
+            const numParcelas = parseInt(quantidadeParcelas, 10);
+            if (isNaN(numParcelas) || numParcelas <= 1) {
+                Alert.alert("Aviso", "Para parcelar, a quantidade mínima é de 2 parcelas.");
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+            const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+
             const payload = {
                 descricao: descricao,
-                valor: parseFloat(valor.replace(',', '.')),
+                valor: valorTratadoParaAPI,
                 tipo: tipo,
-                data: new Date().toISOString().split('T')[0],
+                data: formatarDataAPI(dataEscolhida),
                 categoria: { id: categoriaId },
                 fornecedor: fornecedorId ? { id: fornecedorId } : null
             };
 
-            const response = await axios.post(API_URL_LANCAMENTOS, payload, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            let response;
+
+            if (isModoEdicao) {
+                response = await axios.put(`${API_URL_LANCAMENTOS}/${lancamentoEdit.id}`, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else if (isParcelado) {
+                const payloadParcelado = {
+                    lancamento: payload,
+                    quantidadeParcelas: parseInt(quantidadeParcelas, 10)
+                };
+                response = await axios.post(`${API_URL_LANCAMENTOS}/parcelado`, payloadParcelado, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else {
+                response = await axios.post(API_URL_LANCAMENTOS, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
 
             if (response.status === 201 || response.status === 200) {
-                Alert.alert("Sucesso", "Despesa registada com sucesso!");
+                Alert.alert("Sucesso", isModoEdicao ? "Despesa atualizada com sucesso!" : (isParcelado ? "Despesa parcelada registrada!" : "Despesa registrada com sucesso!"));
                 navigation.goBack();
             }
         } catch (error) {
@@ -127,25 +255,32 @@ export default function DespesaScreen({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
             
-            {/* CABEÇALHO (Fora do KeyboardAvoidingView) */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#d32f2f" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Nova Despesa</Text>
-                <View style={{ width: 40 }} /> 
+                
+                <Text style={styles.headerTitle}>{isModoEdicao ? 'Editar Despesa' : 'Nova Despesa'}</Text>
+                
+                {/* --- LIXEIRA NO CABEÇALHO SÓ APARECE SE FOR EDIÇÃO --- */}
+                {isModoEdicao ? (
+                    <TouchableOpacity onPress={deletarLancamento} style={styles.deleteButton}>
+                        <Ionicons name="trash-outline" size={24} color="#d32f2f" />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ width: 40 }} /> 
+                )}
             </View>
 
-            {/* PROTEÇÃO AVANÇADA DO TECLADO */}
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20} // Compensa a altura do cabeçalho
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
             >
                 <ScrollView 
                     showsVerticalScrollIndicator={false} 
                     contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled" // Permite clicar em botões mesmo com o teclado aberto
+                    keyboardShouldPersistTaps="handled"
                 >
                     
                     <Text style={styles.sectionLabel}>Detalhes da Saída</Text>
@@ -169,9 +304,32 @@ export default function DespesaScreen({ navigation }) {
                             placeholderTextColor="#888"
                             keyboardType="numeric"
                             value={valor}
-                            onChangeText={setValor}
+                            onChangeText={formatarMoeda}
                         />
                     </View>
+
+                    <Text style={styles.sectionLabel}>Data do Vencimento / Pagamento</Text>
+                    <TouchableOpacity 
+                        style={styles.inputContainer} 
+                        onPress={() => setShowDatePicker(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="calendar" size={20} color="#d32f2f" style={styles.inputIcon} />
+                        <View style={{ flex: 1, justifyContent: 'center', height: '100%' }}>
+                            <Text style={{ fontSize: 16, color: '#333' }}>
+                                {formatarDataVisual(dataEscolhida)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={dataEscolhida}
+                            mode="date"
+                            display="default"
+                            onChange={onChangeDate}
+                        />
+                    )}
 
                     <Text style={styles.sectionLabel}>Categoria</Text>
                     <View style={styles.categoriasGrid}>
@@ -214,17 +372,47 @@ export default function DespesaScreen({ navigation }) {
                     {nomeFornecedorLocalizado ? (
                         <View style={styles.successBadge}>
                             <Ionicons name="checkmark-circle" size={18} color="#2e7d32" />
-                            <Text style={styles.successText}>Vinculado: {nomeFornecedorLocalizado}</Text>
+                            <Text style={styles.successText}>{nomeFornecedorLocalizado}</Text>
                         </View>
                     ) : null}
+
+                    {!isModoEdicao && (
+                        <>
+                            <View style={[styles.inputContainer, { justifyContent: 'space-between', paddingVertical: 10, height: 'auto' }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons name="albums-outline" size={20} color="#d32f2f" style={styles.inputIcon} />
+                                    <Text style={{ fontSize: 16, color: '#333', marginLeft: 5 }}>Repetir / Parcelar?</Text>
+                                </View>
+                                <Switch 
+                                    value={isParcelado} 
+                                    onValueChange={setIsParcelado} 
+                                    trackColor={{ false: "#ccc", true: "#ffcdd2" }}
+                                    thumbColor={isParcelado ? "#d32f2f" : "#f4f3f4"}
+                                />
+                            </View>
+
+                            {isParcelado && (
+                                <View style={[styles.inputContainer, { marginTop: -5 }]}>
+                                    <Text style={{ marginRight: 10, color: '#555' }}>Nº de Parcelas:</Text>
+                                    <TextInput
+                                        style={styles.inputText}
+                                        placeholder="Ex: 3"
+                                        keyboardType="numeric"
+                                        value={quantidadeParcelas}
+                                        onChangeText={setQuantidadeParcelas}
+                                    />
+                                </View>
+                            )}
+                        </>
+                    )}
 
                     <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loading} activeOpacity={0.8}>
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <>
-                                <Ionicons name="close-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                                <Text style={styles.saveButtonText}>SALVAR DESPESA</Text>
+                                <Ionicons name={isModoEdicao ? "save-outline" : "close-circle-outline"} size={22} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.saveButtonText}>{isModoEdicao ? "ATUALIZAR DESPESA" : "SALVAR DESPESA"}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -252,9 +440,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    deleteButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ffebee', 
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
     
-    // ATENÇÃO AQUI: paddingBottom foi aumentado para 150 para criar "espaço extra" de rolagem no final da tela
     scrollContent: { paddingHorizontal: 20, paddingBottom: 150, paddingTop: 10 },
     
     sectionLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 10, marginTop: 15 },

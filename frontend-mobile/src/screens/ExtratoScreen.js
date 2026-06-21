@@ -209,11 +209,25 @@ export default function ExtratoScreen({ route, navigation }) {
         }
     };
 
+    // --- ITEM ATUALIZADO ---
     const renderItem = ({ item }) => {
         const isReceita = item.tipo === 'RECEITA';
 
+        // Função que direciona para a tela correta enviando os dados para edição
+        const handleEdit = () => {
+            if (isReceita) {
+                navigation.navigate('ReceitaScreen', { lancamentoEdit: item });
+            } else {
+                navigation.navigate('DespesaScreen', { lancamentoEdit: item });
+            }
+        };
+
         return (
-            <View style={styles.cardLancamento}>
+            <TouchableOpacity 
+                style={styles.cardLancamento} 
+                onPress={handleEdit} 
+                activeOpacity={0.7}
+            >
                 <View style={[styles.iconContainer, { backgroundColor: isReceita ? '#e8f5e9' : '#ffebee' }]}>
                     <Ionicons 
                         name={isReceita ? "arrow-up-outline" : "arrow-down-outline"} 
@@ -230,7 +244,7 @@ export default function ExtratoScreen({ route, navigation }) {
                 <Text style={[styles.valorText, { color: isReceita ? '#2e7d32' : '#d32f2f' }]}>
                     {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
                 </Text>
-            </View>
+            </TouchableOpacity>
         );
     };
 
@@ -247,7 +261,7 @@ export default function ExtratoScreen({ route, navigation }) {
                     <Text style={styles.headerTitle}>Extrato</Text>
                 </View>
                 
-                {/* BOTÕES DE EXPORTAÇÃO (Agora com texto indicativo) */}
+                {/* BOTÕES DE EXPORTAÇÃO */}
                 <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity onPress={exportarPDF} style={styles.exportBtn}>
                         <Ionicons name="document-text" size={16} color="#d32f2f" />

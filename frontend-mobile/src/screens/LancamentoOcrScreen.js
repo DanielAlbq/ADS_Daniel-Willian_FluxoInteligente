@@ -10,8 +10,8 @@ import {
     ScrollView, 
     Image, 
     StatusBar,
-    KeyboardAvoidingView, 
-    Platform              
+    Keyboard,
+    Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,11 +19,12 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { Switch } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function LancamentoOcrScreen({ navigation }) {
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
-    const [data, setData] = useState('');
     const [textoLido, setTextoLido] = useState('');
     const tipo = 'DESPESA';
     const [categoriaId, setCategoriaId] = useState(null);
@@ -31,17 +32,39 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [cnpjBusca, setCnpjBusca] = useState('');
     const [nomeFornecedorLocalizado, setNomeFornecedorLocalizado] = useState('');
     const [categorias, setCategorias] = useState([]);
+    const [dataEscolhida, setDataEscolhida] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isParcelado, setIsParcelado] = useState(false);
+    const [quantidadeParcelas, setQuantidadeParcelas] = useState('2');
 
     const [imageUri, setImageUri] = useState(null);
     const [isPdf, setIsPdf] = useState(false); 
     const [loadingOcr, setLoadingOcr] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
 
+    const [alturaTeclado, setAlturaTeclado] = useState(0);
+
     const API_URL = process.env.EXPO_PUBLIC_API_URL;
     const API_URL_LANCAMENTOS = `${API_URL}/lancamentos`;
 
     useEffect(() => {
+        const eventoMostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const eventoEsconder = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const tecladoMostrou = Keyboard.addListener(eventoMostrar, (e) => {
+            setAlturaTeclado(e.endCoordinates.height);
+        });
+
+        const tecladoEscondeu = Keyboard.addListener(eventoEsconder, () => {
+            setAlturaTeclado(0);
+        });
+
         carregarCategorias();
+
+        return () => {
+            tecladoMostrou.remove();
+            tecladoEscondeu.remove();
+        };
     }, []);
 
     const carregarCategorias = async () => {
@@ -56,15 +79,49 @@ export default function LancamentoOcrScreen({ navigation }) {
         }
     };
 
+    // --- FUNÇÕES DE DATA E MOEDA ---
+    const onChangeDate = (event, selectedDate) => {
+        const currentDate = selectedDate || dataEscolhida;
+        setShowDatePicker(Platform.OS === 'ios');
+        setDataEscolhida(currentDate);
+    };
+
+    const formatarDataVisual = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    };
+
+    const formatarDataAPI = (dataObj) => {
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    const formatarMoeda = (texto) => {
+        if (!texto) return;
+        let valorLimpo = String(texto).replace(/\D/g, '');
+        if (valorLimpo === '') {
+            setValor('');
+            return;
+        }
+        const valorNumerico = (parseInt(valorLimpo, 10) / 100).toFixed(2);
+        const valorFormatado = valorNumerico
+            .replace('.', ',')
+            .replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+        setValor(valorFormatado);
+    };
+    // --------------------------------------------------------
+
     const tirarFoto = async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
         if (permissionResult.granted === false) {
             Alert.alert("Permissão negada", "É necessário permitir acesso à câmera.");
             return;
         }
-
         const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-
         if (!result.canceled) {
             setImageUri(result.assets[0].uri);
             setIsPdf(false);
@@ -78,13 +135,11 @@ export default function LancamentoOcrScreen({ navigation }) {
             Alert.alert("Permissão negada", "É necessário permitir acesso à galeria.");
             return;
         }
-
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
             quality: 0.7,
         });
-
         if (!result.canceled) {
             setImageUri(result.assets[0].uri);
             setIsPdf(false);
@@ -98,7 +153,6 @@ export default function LancamentoOcrScreen({ navigation }) {
                 type: 'application/pdf',
                 copyToCacheDirectory: true,
             });
-
             if (!result.canceled) {
                 const doc = result.assets[0];
                 setImageUri(doc.uri);
@@ -124,17 +178,34 @@ export default function LancamentoOcrScreen({ navigation }) {
                 },
             });
 
-            if (response.data.valorTotal) setValor(response.data.valorTotal.toString());
-            if (response.data.data) setData(response.data.data);
+            // Passa o valor recebido pela máscara
+            if (response.data.valorTotal) {
+                formatarMoeda(response.data.valorTotal.toString());
+            }
+            
+            if (response.data.data) {
+                let dia, mes, ano;
+                if (response.data.data.includes('/')) {
+                    [dia, mes, ano] = response.data.data.split('/');
+                } else if (response.data.data.includes('-')) {
+                    [ano, mes, dia] = response.data.data.split('-');
+                }
+                if (dia && mes && ano) {
+                    setDataEscolhida(new Date(ano, mes - 1, dia));
+                }
+            }
+            
             if (response.data.descricao) setDescricao(response.data.descricao);
+            
             if (response.data.cnpj) {
                 setCnpjBusca(response.data.cnpj);
                 buscarFornecedorPorCnpjOcr(response.data.cnpj);
             }
+            
             if (response.data.textoLido) {
                 setTextoLido(response.data.textoLido);
             }
-
+            
             Alert.alert("Sucesso", "Documento processado! Revise os dados extraídos.");
         } catch (error) {
             Alert.alert("Erro OCR", "Não foi possível ler os dados do documento.");
@@ -163,36 +234,51 @@ export default function LancamentoOcrScreen({ navigation }) {
             return;
         }
 
-        const valorFormatado = valor.replace(',', '.');
-        let dataParaEnvio = new Date().toISOString().split('T')[0];
-
-        if (data) {
-            if (data.includes('/')) {
-                const [dia, mes, ano] = data.split('/');
-                dataParaEnvio = `${ano}-${mes}-${dia}`;
-            } else {
-                dataParaEnvio = data;
+        if (isParcelado) {
+            if (!quantidadeParcelas || quantidadeParcelas.trim() === '') {
+                Alert.alert("Aviso", "A quantidade de parcelas não pode ficar vazia.");
+                return;
+            }
+            const numParcelas = parseInt(quantidadeParcelas, 10);
+            if (isNaN(numParcelas) || numParcelas <= 1) {
+                Alert.alert("Aviso", "Para parcelar, a quantidade mínima é de 2 parcelas.");
+                return;
             }
         }
 
         setLoadingSalvar(true);
         try {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
+            
+            const valorTratadoParaAPI = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+
             const payload = {
                 descricao: descricao,
-                valor: parseFloat(valorFormatado),
+                valor: valorTratadoParaAPI,
                 tipo: tipo,
-                data: dataParaEnvio,
+                data: formatarDataAPI(dataEscolhida),
                 categoria: { id: categoriaId },
                 fornecedor: fornecedorId ? { id: fornecedorId } : null
             };
 
-            const response = await axios.post(API_URL_LANCAMENTOS, payload, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            let response;
+
+            if (isParcelado) {
+                const payloadParcelado = {
+                    lancamento: payload,
+                    quantidadeParcelas: parseInt(quantidadeParcelas, 10)
+                };
+                response = await axios.post(`${API_URL_LANCAMENTOS}/parcelado`, payloadParcelado, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else {
+                response = await axios.post(API_URL_LANCAMENTOS, payload, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
 
             if (response.status === 201 || response.status === 200) {
-                Alert.alert("Sucesso", "Lançamento via OCR salvo com sucesso!");
+                Alert.alert("Sucesso", isParcelado ? "Lançamento via OCR parcelado com sucesso!" : "Lançamento via OCR salvo com sucesso!");
                 navigation.goBack();
             }
         } catch (error) {
@@ -206,7 +292,6 @@ export default function LancamentoOcrScreen({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
 
-            {/* CABEÇALHO FIXO */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#1976d2" />
@@ -215,163 +300,200 @@ export default function LancamentoOcrScreen({ navigation }) {
                 <View style={{ width: 40 }} /> 
             </View>
 
-            {/* PROTEÇÃO AVANÇADA DO TECLADO */}
-            <KeyboardAvoidingView 
-                style={{ flex: 1 }} 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+            <ScrollView 
+                style={{ flex: 1 }}
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
             >
-                <ScrollView 
-                    showsVerticalScrollIndicator={false} 
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                >
 
-                    <Text style={styles.sectionLabel}>Escolha o Comprovante</Text>
-                    <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.actionCard} onPress={tirarFoto} disabled={loadingOcr} activeOpacity={0.7}>
-                            <View style={[styles.iconWrapper, { backgroundColor: '#e3f2fd' }]}>
-                                <Ionicons name="camera-outline" size={28} color="#1976d2" />
-                            </View>
-                            <Text style={styles.actionCardText}>Câmera</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity style={styles.actionCard} onPress={selecionarImagem} disabled={loadingOcr} activeOpacity={0.7}>
-                            <View style={[styles.iconWrapper, { backgroundColor: '#e8f5e9' }]}>
-                                <Ionicons name="image-outline" size={28} color="#2e7d32" />
-                            </View>
-                            <Text style={styles.actionCardText}>Galeria</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionCard} onPress={selecionarPdf} disabled={loadingOcr} activeOpacity={0.7}>
-                            <View style={[styles.iconWrapper, { backgroundColor: '#ffebee' }]}>
-                                <Ionicons name="document-text-outline" size={28} color="#d32f2f" />
-                            </View>
-                            <Text style={styles.actionCardText}>PDF</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {loadingOcr && (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator color="#1976d2" size="large" />
-                            <Text style={styles.loadingText}>A processar documento através de IA...</Text>
+                <Text style={styles.sectionLabel}>Escolha o Comprovante</Text>
+                <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.actionCard} onPress={tirarFoto} disabled={loadingOcr} activeOpacity={0.7}>
+                        <View style={[styles.iconWrapper, { backgroundColor: '#e3f2fd' }]}>
+                            <Ionicons name="camera-outline" size={28} color="#1976d2" />
                         </View>
-                    )}
-
-                    {imageUri && !isPdf && !loadingOcr && (
-                        <View style={styles.previewContainer}>
-                            <Image source={{ uri: imageUri }} style={styles.previewImage} />
-                            <View style={styles.previewBadge}>
-                                <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                                <Text style={styles.previewBadgeText}>Imagem Carregada</Text>
-                            </View>
-                        </View>
-                    )}
-                    {isPdf && !loadingOcr && (
-                        <View style={styles.pdfPreview}>
-                            <Ionicons name="document-text" size={40} color="#d32f2f" />
-                            <Text style={styles.pdfPreviewText}>Documento PDF Pronto</Text>
-                        </View>
-                    )}
-
-                    <Text style={styles.sectionLabel}>Dados Extraídos (Revise)</Text>
+                        <Text style={styles.actionCardText}>Câmera</Text>
+                    </TouchableOpacity>
                     
-                    <View style={styles.inputContainer}>
-                        <Ionicons name="pricetag-outline" size={20} color="#666" style={styles.inputIcon} />
-                        <TextInput 
-                            style={styles.inputText} 
-                            placeholder="Descrição (ex: Mercado)" 
-                            placeholderTextColor="#888"
-                            value={descricao} 
-                            onChangeText={setDescricao} 
-                        />
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.currencySymbol}>R$</Text>
-                        <TextInput 
-                            style={[styles.inputText, { fontSize: 18, fontWeight: 'bold' }]} 
-                            placeholder="0,00" 
-                            placeholderTextColor="#888"
-                            keyboardType="numeric" 
-                            value={valor} 
-                            onChangeText={setValor} 
-                        />
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                        <Ionicons name="calendar-outline" size={20} color="#666" style={styles.inputIcon} />
-                        <TextInput 
-                            style={styles.inputText} 
-                            placeholder="Data (DD/MM/AAAA)" 
-                            placeholderTextColor="#888"
-                            value={data} 
-                            onChangeText={setData} 
-                        />
-                    </View>
-
-                    <Text style={styles.sectionLabel}>Categoria da Despesa</Text>
-                    <View style={styles.categoriasGrid}>
-                        {categorias.map((cat) => (
-                            <TouchableOpacity
-                                key={cat.id}
-                                style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
-                                onPress={() => setCategoriaId(cat.id)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>
-                                    {cat.nome}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <Text style={styles.sectionLabel}>Fornecedor (CNPJ LIDO)</Text>
-                    <View style={styles.inputContainer}>
-                        <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
-                        <TextInput 
-                            style={styles.inputText} 
-                            placeholder="Introduza o CNPJ"
-                            placeholderTextColor="#888"
-                            keyboardType="numeric"
-                            value={cnpjBusca} 
-                            onChangeText={setCnpjBusca} 
-                            onBlur={() => buscarFornecedorPorCnpjOcr(cnpjBusca)} 
-                        />
-                    </View>
-
-                    {nomeFornecedorLocalizado ? (
-                        <View style={styles.successBadge}>
-                            <Ionicons name="checkmark-circle" size={18} color="#2e7d32" />
-                            <Text style={styles.successText}>Vinculado: {nomeFornecedorLocalizado}</Text>
+                    <TouchableOpacity style={styles.actionCard} onPress={selecionarImagem} disabled={loadingOcr} activeOpacity={0.7}>
+                        <View style={[styles.iconWrapper, { backgroundColor: '#e8f5e9' }]}>
+                            <Ionicons name="image-outline" size={28} color="#2e7d32" />
                         </View>
-                    ) : null}
-
-                    <Text style={styles.sectionLabel}>Texto Bruto Lido (Auditoria)</Text>
-                    <View style={[styles.inputContainer, { height: 100, alignItems: 'flex-start', paddingTop: 10, backgroundColor: '#f0f0f0' }]}>
-                        <TextInput 
-                            style={[styles.inputText, { textAlignVertical: 'top', color: '#555', fontSize: 13 }]} 
-                            value={textoLido} 
-                            multiline={true} 
-                            editable={false} 
-                            placeholder="O texto extraído da imagem aparecerá aqui..."
-                            placeholderTextColor="#aaa"
-                        />
-                    </View>
-
-                    <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loadingSalvar} activeOpacity={0.8}>
-                        {loadingSalvar ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <>
-                                <Ionicons name="save-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                                <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>
-                            </>
-                        )}
+                        <Text style={styles.actionCardText}>Galeria</Text>
                     </TouchableOpacity>
 
-                </ScrollView>
-            </KeyboardAvoidingView>
+                    <TouchableOpacity style={styles.actionCard} onPress={selecionarPdf} disabled={loadingOcr} activeOpacity={0.7}>
+                        <View style={[styles.iconWrapper, { backgroundColor: '#ffebee' }]}>
+                            <Ionicons name="document-text-outline" size={28} color="#d32f2f" />
+                        </View>
+                        <Text style={styles.actionCardText}>PDF</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {loadingOcr && (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator color="#1976d2" size="large" />
+                        <Text style={styles.loadingText}>A processar documento através de IA...</Text>
+                    </View>
+                )}
+
+                {imageUri && !isPdf && !loadingOcr && (
+                    <View style={styles.previewContainer}>
+                        <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                        <View style={styles.previewBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                            <Text style={styles.previewBadgeText}>Imagem Carregada</Text>
+                        </View>
+                    </View>
+                )}
+                {isPdf && !loadingOcr && (
+                    <View style={styles.pdfPreview}>
+                        <Ionicons name="document-text" size={40} color="#d32f2f" />
+                        <Text style={styles.pdfPreviewText}>Documento PDF Pronto</Text>
+                    </View>
+                )}
+
+                <Text style={styles.sectionLabel}>Dados Extraídos (Revise)</Text>
+                
+                <View style={styles.inputContainer}>
+                    <Ionicons name="pricetag-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput 
+                        style={styles.inputText} 
+                        placeholder="Descrição (ex: Mercado)" 
+                        placeholderTextColor="#888"
+                        value={descricao} 
+                        onChangeText={setDescricao} 
+                    />
+                </View>
+
+                <View style={styles.inputContainer}>
+                    <Text style={styles.currencySymbol}>R$</Text>
+                    <TextInput 
+                        style={[styles.inputText, { fontSize: 18, fontWeight: 'bold' }]} 
+                        placeholder="0,00" 
+                        placeholderTextColor="#888"
+                        keyboardType="numeric" 
+                        value={valor} 
+                        onChangeText={formatarMoeda} 
+                    />
+                </View>
+
+                {/* --- BOTÃO DE SELEÇÃO DE DATA --- */}
+                <TouchableOpacity 
+                    style={styles.inputContainer} 
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="calendar" size={20} color="#666" style={styles.inputIcon} />
+                    <View style={{ flex: 1, justifyContent: 'center', height: '100%' }}>
+                        <Text style={{ fontSize: 16, color: '#333' }}>
+                            {formatarDataVisual(dataEscolhida)}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                    <DateTimePicker
+                        value={dataEscolhida}
+                        mode="date"
+                        display="default"
+                        onChange={onChangeDate}
+                    />
+                )}
+                {/* -------------------------------- */}
+
+                <Text style={styles.sectionLabel}>Categoria da Despesa</Text>
+                <View style={styles.categoriasGrid}>
+                    {categorias.map((cat) => (
+                        <TouchableOpacity
+                            key={cat.id}
+                            style={[styles.catButton, categoriaId === cat.id && styles.catButtonAtivo]}
+                            onPress={() => setCategoriaId(cat.id)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.catText, categoriaId === cat.id && styles.catTextAtivo]}>
+                                {cat.nome}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <Text style={styles.sectionLabel}>Fornecedor (CNPJ LIDO)</Text>
+                <View style={styles.inputContainer}>
+                    <Ionicons name="business-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput 
+                        style={styles.inputText} 
+                        placeholder="Introduza o CNPJ"
+                        placeholderTextColor="#888"
+                        keyboardType="numeric"
+                        value={cnpjBusca} 
+                        onChangeText={setCnpjBusca} 
+                        onBlur={() => buscarFornecedorPorCnpjOcr(cnpjBusca)} 
+                    />
+                </View>
+
+                {nomeFornecedorLocalizado ? (
+                    <View style={styles.successBadge}>
+                        <Ionicons name="checkmark-circle" size={18} color="#2e7d32" />
+                        <Text style={styles.successText}>Vinculado: {nomeFornecedorLocalizado}</Text>
+                    </View>
+                ) : null}
+
+                {/* --- SEÇÃO DE PARCELAMENTO INCLUÍDA --- */}
+                <View style={[styles.inputContainer, { justifyContent: 'space-between', paddingVertical: 10, height: 'auto' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="albums-outline" size={20} color="#666" style={styles.inputIcon} />
+                        <Text style={{ fontSize: 16, color: '#333' }}>Repetir / Parcelar?</Text>
+                    </View>
+                    <Switch 
+                        value={isParcelado} 
+                        onValueChange={setIsParcelado} 
+                        trackColor={{ false: "#ccc", true: "#bbdefb" }}
+                        thumbColor={isParcelado ? "#1976d2" : "#f4f3f4"}
+                    />
+                </View>
+
+                {isParcelado && (
+                    <View style={[styles.inputContainer, { marginTop: -5 }]}>
+                        <Text style={{ marginRight: 10, color: '#555' }}>Nº de Parcelas:</Text>
+                        <TextInput
+                            style={styles.inputText}
+                            placeholder="Ex: 3"
+                            keyboardType="numeric"
+                            value={quantidadeParcelas}
+                            onChangeText={setQuantidadeParcelas}
+                        />
+                    </View>
+                )}
+                {/* -------------------------------------- */}
+
+                <Text style={styles.sectionLabel}>Texto Bruto Lido (Auditoria)</Text>
+                <View style={[styles.inputContainer, { height: 100, alignItems: 'flex-start', paddingTop: 10, backgroundColor: '#f0f0f0' }]}>
+                    <TextInput 
+                        style={[styles.inputText, { textAlignVertical: 'top', color: '#555', fontSize: 13 }]} 
+                        value={textoLido} 
+                        multiline={true} 
+                        editable={false} 
+                        placeholder="O texto extraído da imagem aparecerá aqui..."
+                        placeholderTextColor="#aaa"
+                    />
+                </View>
+
+                <TouchableOpacity style={styles.saveButton} onPress={salvarLancamento} disabled={loadingSalvar} activeOpacity={0.8}>
+                    {loadingSalvar ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <>
+                            <Ionicons name="save-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                            <Text style={styles.saveButtonText}>SALVAR LANÇAMENTO</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
+                <View style={{ height: alturaTeclado }} />
+
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -396,8 +518,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
     
-    // Espaço extra para o teclado não cobrir os últimos campos
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 150, paddingTop: 10 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 10, flexGrow: 1 },
     
     sectionLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 12, marginTop: 15 },
     

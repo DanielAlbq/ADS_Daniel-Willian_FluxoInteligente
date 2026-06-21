@@ -66,9 +66,13 @@ export default function InsightsScreen() {
                 </View>
             ) : (
                 <View style={styles.cardIa}>
-                    <Markdown style={markdownStyles}>
-                        {insight}
-                    </Markdown>
+                    {insight ? (
+                        <Markdown style={markdownStyles}>
+                            {String(insight)}
+                        </Markdown>
+                    ) : (
+                        <Text style={styles.loadingText}>Nenhum insight gerado no momento.</Text>
+                    )}
                 </View>
             )}
         </ScrollView>
@@ -105,6 +109,7 @@ const styles = StyleSheet.create({
         marginTop: 15,
         fontSize: 16,
         color: '#666',
+        textAlign: 'center',
     },
     cardIa: {
         backgroundColor: '#fff',
