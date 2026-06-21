@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -116,70 +116,80 @@ export default function CategoriaScreen({ navigation }) {
                 <View style={{ width: 40 }} />
             </View>
 
-            {/* FORMULÁRIO DE ADIÇÃO */}
-            <View style={styles.formContainer}>
-                <Text style={styles.sectionTitle}>Nova Categoria</Text>
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+            >
+                <ScrollView 
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={{ paddingBottom: 30 }}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {/* FORMULÁRIO DE ADIÇÃO */}
+                    <View style={styles.formContainer}>
+                        <Text style={styles.sectionTitle}>Nova Categoria</Text>
 
-                <View style={styles.inputContainer}>
-                    <Ionicons name="pricetag-outline" size={20} color="#1976d2" style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.inputText}
-                        placeholder="Nome (ex: Alimentação)"
-                        placeholderTextColor="#888"
-                        value={nome}
-                        onChangeText={setNome}
-                    />
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="pricetag-outline" size={20} color="#1976d2" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputText}
+                                placeholder="Nome (ex: Alimentação)"
+                                placeholderTextColor="#888"
+                                value={nome}
+                                onChangeText={setNome}
+                            />
+                        </View>
 
-                </View>
+                        {/* SELETOR DE TIPO (CHIPS) */}
+                        <View style={styles.tipoContainer}>
+                            <TouchableOpacity
+                                style={[styles.tipoBtn, tipo === 'RECEITA' && styles.tipoBtnReceita]}
+                                onPress={() => setTipo('RECEITA')}
+                            >
+                                <Text style={[styles.tipoTexto, tipo === 'RECEITA' && styles.tipoTextoAtivo]}>Receita</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tipoBtn, tipo === 'DESPESA' && styles.tipoBtnDespesa]}
+                                onPress={() => setTipo('DESPESA')}
+                            >
+                                <Text style={[styles.tipoTexto, tipo === 'DESPESA' && styles.tipoTextoAtivo]}>Despesa</Text>
+                            </TouchableOpacity>
+                        </View>
 
+                        <TouchableOpacity style={styles.saveBtn} onPress={salvarCategoria} disabled={loading}>
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <>
+                                    <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                                    <Text style={styles.saveBtnText}>ADICIONAR</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
 
-                {/* SELETOR DE TIPO (CHIPS) */}
-                <View style={styles.tipoContainer}>
-                    <TouchableOpacity
-                        style={[styles.tipoBtn, tipo === 'RECEITA' && styles.tipoBtnReceita]}
-                        onPress={() => setTipo('RECEITA')}
-                    >
-                        <Text style={[styles.tipoTexto, tipo === 'RECEITA' && styles.tipoTextoAtivo]}>Receita</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tipoBtn, tipo === 'DESPESA' && styles.tipoBtnDespesa]}
-                        onPress={() => setTipo('DESPESA')}
-                    >
-                        <Text style={[styles.tipoTexto, tipo === 'DESPESA' && styles.tipoTextoAtivo]}>Despesa</Text>
-                    </TouchableOpacity>
-                </View>
-
-
-                <TouchableOpacity style={styles.saveBtn} onPress={salvarCategoria} disabled={loading}>
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <>
-                            <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-                            <Text style={styles.saveBtnText}>ADICIONAR</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            {/* LISTA DE CATEGORIAS */}
-            <View style={styles.listContainer}>
-                <Text style={styles.sectionTitle}>Categorias Registadas</Text>
-                {loadingList ? (
-                    <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 20 }} />
-                ) : (
-                    <FlatList
-                        data={categorias}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={renderItem}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                        ListEmptyComponent={
-                            <Text style={styles.emptyText}>Nenhuma categoria encontrada.</Text>
-                        }
-                    />
-                )}
-            </View>
+                    {/* LISTA DE CATEGORIAS */}
+                    <View style={styles.listContainer}>
+                        <Text style={styles.sectionTitle}>Categorias Registadas</Text>
+                        {loadingList ? (
+                            <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 20 }} />
+                        ) : (
+                            <FlatList
+                                data={categorias}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={renderItem}
+                                showsVerticalScrollIndicator={false}
+                                scrollEnabled={false}
+                                contentContainerStyle={{ paddingBottom: 20 }}
+                                ListEmptyComponent={
+                                    <Text style={styles.emptyText}>Nenhuma categoria encontrada.</Text>
+                                }
+                            />
+                        )}
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -255,7 +265,7 @@ const styles = StyleSheet.create({
     },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
 
-    listContainer: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+    listContainer: { paddingHorizontal: 20, paddingTop: 20 },
     card: {
         flexDirection: 'row',
         alignItems: 'center',

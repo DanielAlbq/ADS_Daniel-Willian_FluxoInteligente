@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -84,35 +84,41 @@ function TelaLogin({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView 
-        contentContainerStyle={[styles.container, { paddingVertical: 40 }]} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <View style={styles.headerContainer}>
-          <Ionicons name="leaf" size={60} color="#2e7d32" />
-          <Text style={styles.title}>Fluxo Inteligente</Text>
-          <Text style={styles.subtitle}>Gestão financeira simples e eficaz</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <CustomInput icon="mail-outline" placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <CustomInput icon="lock-closed-outline" placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
-
-          <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')} style={styles.forgotPassword}>
-            <Text style={styles.linkText}>Esqueci minha senha</Text>
-          </TouchableOpacity>
-
-          <CustomButton title="ENTRAR" onPress={fazerLogin} loading={loading} />
-
-          <View style={styles.registerContainer}>
-            <Text style={styles.textNormal}>Não tem conta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
-              <Text style={[styles.linkText, { fontWeight: 'bold' }]}>Cadastre-se</Text>
-            </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={[styles.container, { paddingVertical: 40 }]} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.headerContainer}>
+            <Ionicons name="leaf" size={60} color="#2e7d32" />
+            <Text style={styles.title}>Fluxo Inteligente</Text>
+            <Text style={styles.subtitle}>Gestão financeira simples e eficaz</Text>
           </View>
-        </View>
-      </ScrollView>
+
+          <View style={styles.formContainer}>
+            <CustomInput icon="mail-outline" placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <CustomInput icon="lock-closed-outline" placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
+
+            <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')} style={styles.forgotPassword}>
+              <Text style={styles.linkText}>Esqueci minha senha</Text>
+            </TouchableOpacity>
+
+            <CustomButton title="ENTRAR" onPress={fazerLogin} loading={loading} />
+
+            <View style={styles.registerContainer}>
+              <Text style={styles.textNormal}>Não tem conta? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+                <Text style={[styles.linkText, { fontWeight: 'bold' }]}>Cadastre-se</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -153,24 +159,30 @@ function TelaCadastro({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <Text style={styles.titleSmall}>Crie sua conta</Text>
-        <Text style={styles.subtitle}>Preencha os dados abaixo para começar</Text>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.titleSmall}>Crie sua conta</Text>
+          <Text style={styles.subtitle}>Preencha os dados abaixo para começar</Text>
 
-        <View style={[styles.formContainer, { marginTop: 20 }]}>
-          <CustomInput icon="person-outline" placeholder="Nome Completo" onChangeText={setNome} />
-          <CustomInput icon="mail-outline" placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <CustomInput icon="business-outline" placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
-          <CustomInput icon="call-outline" placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
-          <CustomInput icon="lock-closed-outline" placeholder="Senha" onChangeText={setSenha} secureTextEntry />
+          <View style={[styles.formContainer, { marginTop: 20 }]}>
+            <CustomInput icon="person-outline" placeholder="Nome Completo" onChangeText={setNome} />
+            <CustomInput icon="mail-outline" placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <CustomInput icon="business-outline" placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
+            <CustomInput icon="call-outline" placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
+            <CustomInput icon="lock-closed-outline" placeholder="Senha" onChangeText={setSenha} secureTextEntry />
 
-          <CustomButton title="FINALIZAR CADASTRO" onPress={handleCadastro} loading={loading} />
-        </View>
-      </ScrollView>
+            <CustomButton title="FINALIZAR CADASTRO" onPress={handleCadastro} loading={loading} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -199,19 +211,25 @@ function TelaEsqueciSenha({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView 
-        contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <Ionicons name="key-outline" size={50} color="#2e7d32" style={{ alignSelf: 'center', marginBottom: 20 }} />
-        <Text style={styles.titleSmall}>Recuperar Senha</Text>
-        <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 30 }]}>Digite o e-mail cadastrado para receber o código de recuperação.</Text>
-        
-        <View style={styles.formContainer}>
-          <CustomInput icon="mail-outline" placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <CustomButton title="ENVIAR CÓDIGO" onPress={pedirCodigo} />
-        </View>
-      </ScrollView>
+        <ScrollView 
+          contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Ionicons name="key-outline" size={50} color="#2e7d32" style={{ alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={styles.titleSmall}>Recuperar Senha</Text>
+          <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 30 }]}>Digite o e-mail cadastrado para receber o código de recuperação.</Text>
+          
+          <View style={styles.formContainer}>
+            <CustomInput icon="mail-outline" placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <CustomButton title="ENVIAR CÓDIGO" onPress={pedirCodigo} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -241,19 +259,25 @@ function TelaRedefinirSenha({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView 
-        contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <Text style={styles.titleSmall}>Nova Senha</Text>
-        <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 20 }]}>Enviado para: {email}</Text>
-        
-        <View style={styles.formContainer}>
-          <CustomInput icon="apps-outline" placeholder="Código numérico" onChangeText={setCodigo} keyboardType="numeric" />
-          <CustomInput icon="lock-closed-outline" placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
-          <CustomButton title="SALVAR NOVA SENHA" onPress={salvarNovaSenha} />
-        </View>
-      </ScrollView>
+        <ScrollView 
+          contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.titleSmall}>Nova Senha</Text>
+          <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 20 }]}>Enviado para: {email}</Text>
+          
+          <View style={styles.formContainer}>
+            <CustomInput icon="apps-outline" placeholder="Código numérico" onChangeText={setCodigo} keyboardType="numeric" />
+            <CustomInput icon="lock-closed-outline" placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
+            <CustomButton title="SALVAR NOVA SENHA" onPress={salvarNovaSenha} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

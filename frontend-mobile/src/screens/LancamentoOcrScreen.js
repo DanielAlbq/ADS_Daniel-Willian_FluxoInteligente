@@ -10,7 +10,7 @@ import {
     ScrollView, 
     Image, 
     StatusBar,
-    Keyboard,
+    KeyboardAvoidingView,
     Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,29 +42,12 @@ export default function LancamentoOcrScreen({ navigation }) {
     const [loadingOcr, setLoadingOcr] = useState(false);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
 
-    const [alturaTeclado, setAlturaTeclado] = useState(0);
 
     const API_URL = process.env.EXPO_PUBLIC_API_URL;
     const API_URL_LANCAMENTOS = `${API_URL}/lancamentos`;
 
     useEffect(() => {
-        const eventoMostrar = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-        const eventoEsconder = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-        const tecladoMostrou = Keyboard.addListener(eventoMostrar, (e) => {
-            setAlturaTeclado(e.endCoordinates.height);
-        });
-
-        const tecladoEscondeu = Keyboard.addListener(eventoEsconder, () => {
-            setAlturaTeclado(0);
-        });
-
         carregarCategorias();
-
-        return () => {
-            tecladoMostrou.remove();
-            tecladoEscondeu.remove();
-        };
     }, []);
 
     const carregarCategorias = async () => {
@@ -300,12 +283,17 @@ export default function LancamentoOcrScreen({ navigation }) {
                 <View style={{ width: 40 }} /> 
             </View>
 
-            <ScrollView 
-                style={{ flex: 1 }}
-                showsVerticalScrollIndicator={false} 
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
             >
+                <ScrollView 
+                    style={{ flex: 1 }}
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
 
                 <Text style={styles.sectionLabel}>Escolha o Comprovante</Text>
                 <View style={styles.actionRow}>
@@ -491,9 +479,8 @@ export default function LancamentoOcrScreen({ navigation }) {
                     )}
                 </TouchableOpacity>
 
-                <View style={{ height: alturaTeclado }} />
-
             </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
