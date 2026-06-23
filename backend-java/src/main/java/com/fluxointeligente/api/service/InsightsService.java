@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +54,9 @@ public class InsightsService {
         mensagemChatRepository.save(novaPergunta);
 
         List<MensagemChat> historico = mensagemChatRepository
-                .findTop10ByUsuarioIdUsuarioOrderByDataHoraAsc(usuarioLogado.getIdUsuario());
+                .findTop4ByUsuarioIdUsuarioOrderByDataHoraDesc(usuarioLogado.getIdUsuario());
+
+        Collections.reverse(historico);
 
         List<Map<String, String>> mensagens = new ArrayList<>();
 
@@ -66,14 +69,21 @@ public class InsightsService {
         mensagens.add(criarMensagem("system", promptSistema));
 
         for (MensagemChat msg : historico) {
-            String role = msg.getRemetente().equals("USUARIO") ? "user" : "assistant";
-            mensagens.add(criarMensagem(role, msg.getTexto()));
+            if (msg.getTexto() != null && !msg.getTexto().trim().isEmpty()) {
+                String role = msg.getRemetente().equals("USUARIO") ? "user" : "assistant";
+                mensagens.add(criarMensagem(role, msg.getTexto()));
+            }
         }
 
         String respostaIA = chamarOllamaAPI(mensagens);
 
-        MensagemChat novaResposta = new MensagemChat(usuarioLogado, "IA", respostaIA, LocalDateTime.now());
-        mensagemChatRepository.save(novaResposta);
+        if (respostaIA != null && !respostaIA.trim().isEmpty() && !respostaIA.startsWith("Erro")) {
+            MensagemChat novaResposta = new MensagemChat(usuarioLogado, "IA", respostaIA, LocalDateTime.now());
+            mensagemChatRepository.save(novaResposta);
+        } else {
+            System.err.println(
+                    "A IA retornou vazio ou erro. A mensagem NÃO foi salva no histórico para não poluir o banco.");
+        }
 
         return respostaIA;
     }

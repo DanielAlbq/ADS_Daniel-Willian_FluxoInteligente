@@ -147,30 +147,25 @@ public class OcrService {
             dadosExtraidos.put("data", dataEncontrada);
         }
 
-        Matcher mValorPagoPosto = Pattern
-                .compile("(?i)VALOR PAGO(?:\\s*\\(R\\$\\))?[\\s\\r\\n]+((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
-                .matcher(textoBruto);
-        Matcher mValorTotalRs = Pattern
-                .compile("(?i)Valor Total R\\$[\\s\\r\\n]+((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
-                .matcher(textoBruto);
-        Matcher mValorPago = Pattern.compile("(?i)VALOR PAGO[\\s\\r\\n]+(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
-                .matcher(textoBruto);
-        Matcher mValorAPagar = Pattern.compile("(?i)Valor a Pagar[\\s\\S]{0,30}?(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
-                .matcher(textoBruto);
-        Matcher mValorDanfe = Pattern.compile(
-                "(?i)VALOR TOTAL DA NOTA[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})")
-                .matcher(textoBruto);
+        String[] padroesValor = {
+                // 1. Resolve o final da nota do Méqui: Pega "VALOR PAGO R$" ignorando quebras
+                // de linha antes do número
+                "(?i)VALOR PAGO(?:\\s*R\\$)?(?:[\\s\\r\\n]+)((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
 
-        if (mValorPagoPosto.find()) {
-            dadosExtraidos.put("valorTotal", mValorPagoPosto.group(1).replace(".", ","));
-        } else if (mValorTotalRs.find()) {
-            dadosExtraidos.put("valorTotal", mValorTotalRs.group(1).replace(".", ","));
-        } else if (mValorPago.find()) {
-            dadosExtraidos.put("valorTotal", mValorPago.group(1).replace(".", ","));
-        } else if (mValorAPagar.find()) {
-            dadosExtraidos.put("valorTotal", mValorAPagar.group(1).replace(".", ","));
-        } else if (mValorDanfe.find()) {
-            dadosExtraidos.put("valorTotal", mValorDanfe.group(1).replace(".", ","));
+                // 2. Resolve o meio da nota do Méqui: Pega "TOTAL R$" e pula até 50 letras
+                // ("FORMA PAGAMENTO", "TEF", etc)
+                "(?i)TOTAL R\\$[\\s\\S]{0,50}?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
+
+                // 3. Fallback genérico para Danfe, Posto e outros
+                "(?i)(?:Valor Total|Valor a Pagar|VALOR TOTAL DA NOTA)[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})"
+        };
+
+        for (String regex : padroesValor) {
+            Matcher mValor = Pattern.compile(regex).matcher(textoBruto);
+            if (mValor.find()) {
+                dadosExtraidos.put("valorTotal", mValor.group(1).replace(".", ","));
+                break; // Se achou um valor com o regex mais forte, para a busca!
+            }
         }
 
         String nomeEncontrado = null;

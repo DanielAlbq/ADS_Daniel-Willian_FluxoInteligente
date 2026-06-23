@@ -10,5 +10,5 @@ import java.util.UUID;
 @Repository
 public interface MensagemChatRepository extends JpaRepository<MensagemChat, UUID> {
 
-    List<MensagemChat> findTop10ByUsuarioIdUsuarioOrderByDataHoraAsc(UUID usuarioId);
+    List<MensagemChat> findTop4ByUsuarioIdUsuarioOrderByDataHoraDesc(UUID usuarioId);
 }
