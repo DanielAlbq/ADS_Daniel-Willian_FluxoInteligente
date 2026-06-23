@@ -50,4 +50,7 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
                         @Param("tipo") TipoLancamento tipo,
                         @Param("dataInicio") java.time.LocalDate dataInicio,
                         @Param("dataFim") java.time.LocalDate dataFim);
+
+        @Query("SELECT SUM(l.valor) FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId AND l.tipo = :tipo AND l.status = 'PAGO'")
+        BigDecimal somarPorUsuarioETipo(@Param("usuarioId") UUID usuarioId, @Param("tipo") TipoLancamento tipo);
 }

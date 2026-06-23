@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
-export default function InsightsScreen() {
+export default function InsightsScreen({ navigation }) {
     const [insight, setInsight] = useState('');
     const [loading, setLoading] = useState(true);
 
@@ -55,7 +55,7 @@ export default function InsightsScreen() {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Consultoria IA 🤖</Text>
+                <Text style={styles.title}>Consultoria IA </Text>
                 <Text style={styles.subtitle}>Sua análise financeira inteligente</Text>
             </View>
 
@@ -70,9 +70,17 @@ export default function InsightsScreen() {
                         <Markdown style={markdownStyles}>
                             {String(insight)}
                         </Markdown>
-                    ) : (
-                        <Text style={styles.loadingText}>Nenhum insight gerado no momento.</Text>
-                    )}
+                    )
+                        : (
+                            <Text style={styles.loadingText}>Nenhum insight gerado no momento.</Text>
+                        )}
+
+                    <TouchableOpacity
+                        style={styles.chatButton}
+                        onPress={() => navigation.navigate("ChatScreen", { insightInicial: insight })}
+                    >
+                        <Text style={styles.chatButtonText}>Falar com o Consultor</Text>
+                    </TouchableOpacity>
                 </View>
             )}
         </ScrollView>
@@ -123,7 +131,6 @@ const styles = StyleSheet.create({
     }
 });
 
-// estilo do markdown
 const markdownStyles = {
     body: {
         fontSize: 15,
@@ -138,5 +145,17 @@ const markdownStyles = {
     strong: {
         fontWeight: 'bold',
         color: '#000',
+    },
+    chatButton: {
+        backgroundColor: '#2e7d32',
+        marginTop: 20,
+        padding: 15,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    chatButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 };

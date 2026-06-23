@@ -17,6 +17,7 @@ import LancamentoOcrScreen from './src/screens/LancamentoOcrScreen';
 import ExtratoScreen from './src/screens/ExtratoScreen';
 import InsightsScreen from './src/screens/InsightsScreen';
 import AjustesScreen from './src/AjustesScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
@@ -25,10 +26,10 @@ const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
 const CustomInput = ({ icon, ...props }) => (
   <View style={styles.inputContainer}>
     <Ionicons name={icon} size={20} color="#2e7d32" style={styles.inputIcon} />
-    <TextInput 
-      style={styles.inputText} 
-      placeholderTextColor="#888" 
-      {...props} 
+    <TextInput
+      style={styles.inputText}
+      placeholderTextColor="#888"
+      {...props}
     />
   </View>
 );
@@ -85,13 +86,13 @@ function TelaLogin({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <ScrollView 
-          contentContainerStyle={[styles.container, { paddingVertical: 40 }]} 
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingVertical: 40 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -160,13 +161,13 @@ function TelaCadastro({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -212,19 +213,19 @@ function TelaEsqueciSenha({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
           keyboardShouldPersistTaps="handled"
         >
           <Ionicons name="key-outline" size={50} color="#2e7d32" style={{ alignSelf: 'center', marginBottom: 20 }} />
           <Text style={styles.titleSmall}>Recuperar Senha</Text>
           <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 30 }]}>Digite o e-mail cadastrado para receber o código de recuperação.</Text>
-          
+
           <View style={styles.formContainer}>
             <CustomInput icon="mail-outline" placeholder="Email cadastrado" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
             <CustomButton title="ENVIAR CÓDIGO" onPress={pedirCodigo} />
@@ -260,18 +261,18 @@ function TelaRedefinirSenha({ route, navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={[styles.container, { justifyContent: 'flex-start', paddingTop: 50 }]}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.titleSmall}>Nova Senha</Text>
           <Text style={[styles.subtitle, { textAlign: 'center', marginBottom: 20 }]}>Enviado para: {email}</Text>
-          
+
           <View style={styles.formContainer}>
             <CustomInput icon="apps-outline" placeholder="Código numérico" onChangeText={setCodigo} keyboardType="numeric" />
             <CustomInput icon="lock-closed-outline" placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
@@ -288,13 +289,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator 
+        <Stack.Navigator
           initialRouteName="Login"
           screenOptions={{
             headerStyle: { backgroundColor: '#fff' },
             headerTintColor: '#2e7d32',
             headerTitleStyle: { fontWeight: 'bold' },
-            headerShadowVisible: false, 
+            headerShadowVisible: false,
           }}
         >
           <Stack.Screen name="Login" component={TelaLogin} options={{ headerShown: false }} />
@@ -312,6 +313,7 @@ export default function App() {
           <Stack.Screen name="LancamentoOcrScreen" component={LancamentoOcrScreen} options={{ title: 'Escanear Nota' }} />
           <Stack.Screen name="InsightsScreen" component={InsightsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AjustesScreen" component={AjustesScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
@@ -320,9 +322,9 @@ export default function App() {
 
 // --- ESTILOS GLOBAIS (DESIGN SYSTEM) ---
 const styles = StyleSheet.create({
-  container: { 
-    flexGrow: 1, 
-    backgroundColor: '#fff', 
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
@@ -331,21 +333,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 30,
     paddingTop: 40,
-    paddingBottom: 80, 
+    paddingBottom: 80,
   },
   headerContainer: {
     alignItems: 'center',
     marginBottom: 50,
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#2e7d32',
     marginTop: 10,
   },
   titleSmall: {
-    fontSize: 24, 
-    fontWeight: 'bold', 
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#2e7d32',
     textAlign: 'center',
   },
@@ -377,22 +379,22 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 16,
   },
-  primaryButton: { 
-    width: '100%', 
-    height: 55, 
-    backgroundColor: '#2e7d32', 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
+  primaryButton: {
+    width: '100%',
+    height: 55,
+    backgroundColor: '#2e7d32',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 10,
-    elevation: 2, 
-    shadowColor: '#000', 
+    elevation: 2,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-  buttonText: { 
-    color: '#fff', 
+  buttonText: {
+    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -400,8 +402,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginBottom: 20,
   },
-  linkText: { 
-    color: '#2e7d32', 
+  linkText: {
+    color: '#2e7d32',
     fontSize: 14,
   },
   textNormal: {
