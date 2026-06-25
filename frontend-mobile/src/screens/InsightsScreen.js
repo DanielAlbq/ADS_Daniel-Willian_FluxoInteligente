@@ -20,12 +20,12 @@ export default function InsightsScreen({ navigation }) {
             const token = await AsyncStorage.getItem('@FluxoInteligente:token');
 
             if (!token) {
-                setInsight('❌ Erro: Usuário não autenticado.');
+                setInsight('Erro: Usuário não autenticado.');
                 setLoading(false);
                 return;
             }
             const urlDaIA = `${API_BASE_URL}/insights/gerar`;
-            console.log("🚀 Disparando IA para a URL:", urlDaIA);
+            console.log("Disparando IA para a URL:", urlDaIA);
 
             const response = await fetch(urlDaIA, {
                 method: 'GET',
@@ -45,7 +45,7 @@ export default function InsightsScreen({ navigation }) {
             }
 
         } catch (error) {
-            setInsight('❌ Erro de conexão.');
+            setInsight(' Erro de conexão.');
             console.error("Erro no Fetch (Insights):", error);
         } finally {
             setLoading(false);
@@ -76,10 +76,12 @@ export default function InsightsScreen({ navigation }) {
                         )}
 
                     <TouchableOpacity
-                        style={styles.chatButton}
+                        style={{ backgroundColor: '#2e7d32', padding: 15, borderRadius: 10, marginTop: 20, alignItems: 'center' }}
                         onPress={() => navigation.navigate("ChatScreen", { insightInicial: insight })}
                     >
-                        <Text style={styles.chatButtonText}>Falar com o Consultor</Text>
+                        <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>
+                            Falar com o Consultor
+                        </Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -87,7 +89,6 @@ export default function InsightsScreen({ navigation }) {
     );
 }
 
-// --- ESTILIZAÇÃO ---
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -128,7 +129,28 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
         elevation: 3,
         marginBottom: 30,
-    }
+    },
+
+    chatButton: {
+        backgroundColor: '#2e7d32',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 20,
+
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
+    chatButtonText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
 });
 
 const markdownStyles = {
@@ -146,16 +168,5 @@ const markdownStyles = {
         fontWeight: 'bold',
         color: '#000',
     },
-    chatButton: {
-        backgroundColor: '#2e7d32',
-        marginTop: 20,
-        padding: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    chatButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
+
 };

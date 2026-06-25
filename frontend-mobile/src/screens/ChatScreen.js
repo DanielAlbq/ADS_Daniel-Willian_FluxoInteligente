@@ -79,9 +79,7 @@ export default function ChatScreen({ route, navigation }) {
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            // Alteramos aqui: usamos 'padding' no iOS e 'height' (ou undefined) no Android
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            // Se usar um cabeçalho fixo, este offset ajuda a não empurrar demasiado
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
         >
             <View style={styles.header}>
