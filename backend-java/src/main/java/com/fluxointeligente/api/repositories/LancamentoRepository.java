@@ -41,12 +41,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
                         + "FROM Lancamento l WHERE l.usuario.idUsuario = :idUsuario AND l.status = 'PAGO'")
         BigDecimal calcularSaldoAtual(@Param("idUsuario") UUID idUsuario);
 
-        // Busca os lançamentos por período (mês/ano) e pelo tipo.
-        @Query("SELECT l FROM Lancamento l WHERE " +
-                        "(:tipo IS NULL OR l.tipo = :tipo) AND " +
-                        "(l.data BETWEEN :dataInicio AND :dataFim) " +
-                        "ORDER BY l.data DESC")
+        @Query("SELECT l FROM Lancamento l WHERE l.usuario.idUsuario = :usuarioId " +
+                        "AND (:tipo IS NULL OR l.tipo = :tipo) " +
+                        "AND (CAST(:dataInicio AS date) IS NULL OR l.data >= :dataInicio) " +
+                        "AND (CAST(:dataFim AS date) IS NULL OR l.data <= :dataFim)")
         List<Lancamento> findByFiltrosExtrato(
+                        @Param("usuarioId") UUID usuarioId,
                         @Param("tipo") TipoLancamento tipo,
                         @Param("dataInicio") java.time.LocalDate dataInicio,
                         @Param("dataFim") java.time.LocalDate dataFim);

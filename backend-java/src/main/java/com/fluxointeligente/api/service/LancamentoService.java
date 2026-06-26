@@ -112,7 +112,9 @@ public class LancamentoService {
 
     public List<Lancamento> buscarPorFiltros(TipoLancamento tipo, java.time.LocalDate dataInicio,
             java.time.LocalDate dataFim) {
-        return repository.findByFiltrosExtrato(tipo, dataInicio, dataFim);
+        Usuario usuario = getUsuarioLogado();
+
+        return repository.findByFiltrosExtrato(usuario.getIdUsuario(), tipo, dataInicio, dataFim);
     }
 
     public List<Lancamento> salvarParcelado(Lancamento lancamentoBase, int quantidadeParcelas) {
