@@ -23,16 +23,35 @@ const Stack = createNativeStackNavigator();
 const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/usuarios`;
 
 // --- COMPONENTES DE DESIGN SYSTEM ---
-const CustomInput = ({ icon, ...props }) => (
-  <View style={styles.inputContainer}>
-    <Ionicons name={icon} size={20} color="#2e7d32" style={styles.inputIcon} />
-    <TextInput
-      style={styles.inputText}
-      placeholderTextColor="#888"
-      {...props}
-    />
-  </View>
-);
+const CustomInput = ({ icon, isPassword, ...props }) => {
+  // visibilidade da senha
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <View style={styles.inputContainer}>
+      <Ionicons name={icon} size={20} color="#2e7d32" style={styles.inputIcon} />
+      <TextInput
+        style={styles.inputText}
+        placeholderTextColor="#888"
+        secureTextEntry={isPassword ? !showPassword : props.secureTextEntry}
+        {...props}
+      />
+      {/* Renderiza o botão do olhinho apenas se for um campo de senha */}
+      {isPassword && (
+        <TouchableOpacity 
+          onPress={() => setShowPassword(!showPassword)} 
+          style={{ padding: 5, marginLeft: 5 }}
+        >
+          <Ionicons 
+            name={showPassword ? "eye-outline" : "eye-off-outline"} 
+            size={22} 
+            color="#888" 
+          />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
 const CustomButton = ({ title, onPress, loading }) => (
   <TouchableOpacity style={styles.primaryButton} onPress={onPress} disabled={loading}>
@@ -104,7 +123,7 @@ function TelaLogin({ navigation }) {
 
           <View style={styles.formContainer}>
             <CustomInput icon="mail-outline" placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-            <CustomInput icon="lock-closed-outline" placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
+            <CustomInput icon="lock-closed-outline" placeholder="Senha" value={senha} onChangeText={setSenha} isPassword />
 
             <TouchableOpacity onPress={() => navigation.navigate('EsqueciSenha')} style={styles.forgotPassword}>
               <Text style={styles.linkText}>Esqueci minha senha</Text>
@@ -179,7 +198,7 @@ function TelaCadastro({ navigation }) {
             <CustomInput icon="mail-outline" placeholder="E-mail" onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
             <CustomInput icon="business-outline" placeholder="CNPJ" onChangeText={setCnpj} keyboardType="numeric" />
             <CustomInput icon="call-outline" placeholder="Telefone" onChangeText={setTelefone} keyboardType="phone-pad" />
-            <CustomInput icon="lock-closed-outline" placeholder="Senha" onChangeText={setSenha} secureTextEntry />
+            <CustomInput icon="lock-closed-outline" placeholder="Senha" onChangeText={setSenha} isPassword/>
 
             <CustomButton title="FINALIZAR CADASTRO" onPress={handleCadastro} loading={loading} />
           </View>
@@ -275,7 +294,7 @@ function TelaRedefinirSenha({ route, navigation }) {
 
           <View style={styles.formContainer}>
             <CustomInput icon="apps-outline" placeholder="Código numérico" onChangeText={setCodigo} keyboardType="numeric" />
-            <CustomInput icon="lock-closed-outline" placeholder="Nova Senha" onChangeText={setNovaSenha} secureTextEntry />
+            <CustomInput icon="lock-closed-outline" placeholder="Nova Senha" onChangeText={setNovaSenha} isPassword/>
             <CustomButton title="SALVAR NOVA SENHA" onPress={salvarNovaSenha} />
           </View>
         </ScrollView>
