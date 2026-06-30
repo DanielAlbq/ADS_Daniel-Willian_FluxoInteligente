@@ -31,7 +31,6 @@ public class OcrService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    // Pegamos o usuário logado para amarrar ao arquivo
     private Usuario getUsuarioLogado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String emailLogado = (String) auth.getPrincipal();
@@ -126,8 +125,6 @@ public class OcrService {
             return dadosExtraidos;
         }
 
-        // 1. Padrão CNPJ (Adicionado âncora 'CNPJ' para forçar a captura em notas de
-        // posto)
         Matcher mCnpj = Pattern
                 .compile("(?i)(?:CNPJ[:\\s]*)?(\\d{2}[\\.\\,]?\\s*\\d{3}[\\.\\,]?\\s*\\d{3}/\\d{4}-\\d{2})")
                 .matcher(textoBruto);
@@ -148,23 +145,20 @@ public class OcrService {
         }
 
         String[] padroesValor = {
-                // 1. Resolve o final da nota do Méqui: Pega "VALOR PAGO R$" ignorando quebras
-                // de linha antes do número
-                "(?i)VALOR PAGO(?:\\s*R\\$)?(?:[\\s\\r\\n]+)((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
+                "(?i)VALOR\\.+:\\s*R\\$\\s*((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
 
-                // 2. Resolve o meio da nota do Méqui: Pega "TOTAL R$" e pula até 50 letras
-                // ("FORMA PAGAMENTO", "TEF", etc)
-                "(?i)TOTAL R\\$[\\s\\S]{0,50}?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
+                "(?i)VALOR PA[CG]O(?:\\s*\\(R\\$\\)|\\s*R\\$)?(?:[\\s\\r\\n]+)((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
 
-                // 3. Fallback genérico para Danfe, Posto e outros
-                "(?i)(?:Valor Total|Valor a Pagar|VALOR TOTAL DA NOTA)[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})"
+                "(?i)(?<!SUB)TOTAL R\\$[\\s\\S]{0,50}?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})",
+
+                "(?i)(?:(?<!SUB)Valor Total(?: R\\$)?|Valor a Pagar|VALOR TOTAL DA NOTA)[\\s\\S]{0,80}?(?:R\\$\\s*)?((?!0[.,]00)\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})"
         };
 
         for (String regex : padroesValor) {
             Matcher mValor = Pattern.compile(regex).matcher(textoBruto);
             if (mValor.find()) {
                 dadosExtraidos.put("valorTotal", mValor.group(1).replace(".", ","));
-                break; // Se achou um valor com o regex mais forte, para a busca!
+                break;
             }
         }
 
